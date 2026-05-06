@@ -4,6 +4,7 @@ import math
 import queue
 import threading
 import time
+import sys
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from tkinter import scrolledtext, ttk
@@ -15,7 +16,8 @@ import pyaudiowpatch as pyaudio
 
 
 APP_TITLE = "Xbox Audio Rumble Studio"
-CONFIG_FILE = Path(__file__).with_suffix(".settings.json")
+APP_PATH = Path(sys.executable if getattr(sys, "frozen", False) else __file__)
+CONFIG_FILE = APP_PATH.with_suffix(".settings.json")
 XINPUT_SUCCESS = 0
 XINPUT_ERROR_DEVICE_NOT_CONNECTED = 1167
 
