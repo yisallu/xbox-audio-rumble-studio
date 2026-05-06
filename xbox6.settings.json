@@ -1,0 +1,21 @@
+{
+  "enabled": false,
+  "controller_index": 0,
+  "auto_profile": true,
+  "rhythm_punch": 1.0,
+  "texture_amount": 0.0,
+  "dual_motor_mode": true,
+  "vocal_only_mode": false,
+  "adaptive_threshold": false,
+  "auto_calibrating": false,
+  "intensity": 0.268,
+  "vibration_threshold": 768.0,
+  "dead_zone": 0.035,
+  "attack_rate": 0.58,
+  "release_rate": 0.22,
+  "map_in_max": 6000.0,
+  "gamma_correction": 0.9,
+  "vocal_low": 600,
+  "vocal_high": 4200,
+  "bass_high": 700
+}
