@@ -1,5 +1,7 @@
 # Xbox Audio Rumble Studio
 
+[中文说明](README.zh-CN.md)
+
 Xbox Audio Rumble Studio is a Windows desktop app that turns live system audio into Xbox controller vibration. It listens to the default WASAPI loopback device, analyzes volume and frequency bands in real time, then drives an XInput-compatible controller with tunable left/right motor feedback.
 
 It is designed for music, ASMR, videos, games, and any other audio source playing on the PC.
