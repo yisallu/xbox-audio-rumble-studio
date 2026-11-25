@@ -703,7 +703,9 @@ def audio_vibration_thread(shared: SharedVibrationParams, log_queue: queue.Queue
     calibration_until = 0.0
     energy_avg = 0.0
     transient_avg = 0.0
-    detected_mode = "识别中"
+    detected_mode = "ASMR"
+    candidate_mode = "ASMR"
+    candidate_since = 0.0
 
     fft_cache_key = None
     fft_freqs = None
@@ -898,7 +900,12 @@ def audio_vibration_thread(shared: SharedVibrationParams, log_queue: queue.Queue
                 else:
                     noise_floor += (level - noise_floor) * 0.0015
 
-            detected_mode = classify_content(total_rms, vocal_rms, bass_rms, transient_avg, detected_mode)
+            raw_mode = classify_content(total_rms, vocal_rms, bass_rms, transient_avg, detected_mode)
+            if raw_mode != candidate_mode:
+                candidate_mode = raw_mode
+                candidate_since = now
+            elif candidate_mode != detected_mode and (now - candidate_since) >= 1.2:
+                detected_mode = candidate_mode
 
             effective = {
                 "dual_motor_mode": snap["dual_motor_mode"],
@@ -1897,8 +1904,6 @@ class VibrationApp:
         m_hdr = tk.Frame(m_body, bg=BG_CARD)
         m_hdr.pack(fill="x", pady=(0, S(10)))
         tk.Label(m_hdr, text="场景模式", bg=BG_CARD, fg=TEXT_MAIN, font=F_H2).pack(side="left")
-        self.scene_status = tk.Label(m_hdr, text="正在识别场景...", bg=BG_CARD, fg=BLUE_HI, font=F_SMALL)
-        self.scene_status.pack(side="right")
 
         self.mode_selector = ModeSelector(m_body, MODE_CARDS, self.on_mode_selected)
         self.mode_selector.pack(fill="x")
@@ -2223,33 +2228,17 @@ class VibrationApp:
         dev_ok = "未检测" not in dev_name and "重连" not in dev_name
         self.audio_pill.update_pill(short_dev, CYAN if dev_ok else AMBER)
 
-        # 场景状态与校准按钮反馈
+        # 校准按钮反馈
         if snap["auto_calibrating"]:
             sec = max(1, int(math.ceil(stats["calibrating_left"])))
             self.cal_btn.configure_btn(f"校准 {sec}s…", enabled=False)
-            self.scene_status.config(text="正在采样环境底噪...", fg=AMBER)
         else:
             self.cal_btn.configure_btn("环境校准", enabled=True)
-            if not snap["enabled"]:
-                self.scene_status.config(text="震动已暂停（LB + RB 可恢复）", fg=TEXT_MUTED)
-            elif snap["auto_profile"]:
-                mode_map = {
-                    "音乐": ("当前识别：音乐律动", AMBER),
-                    "ASMR": ("当前识别：人声 / 轻语", PURPLE),
-                    "安静": ("当前识别：安静待机", TEXT_MUTED),
-                }
-                txt, col = mode_map.get(stats["detected_mode"], ("正在监听识别...", BLUE_HI))
-                self.scene_status.config(text=txt, fg=col)
-            else:
-                self.scene_status.config(text="手动预设模式", fg=BLUE_HI)
 
         testing = self.test_thread is not None and self.test_thread.is_alive()
         self.test_btn.configure_btn("测试中…" if testing else "测试震动", enabled=not testing)
 
         # 实时动态条
-        self.threshold_info.config(
-            text=f"触发门限 {stats['effective_threshold']:.0f}  ·  底噪 {stats['noise_floor']:.0f}"
-        )
         self.meter_audio.set_level(
             stats["total_rms"],
             peak=stats["peak_rms"],
