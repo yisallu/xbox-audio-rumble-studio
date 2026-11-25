@@ -23,7 +23,13 @@ It is designed for music, ASMR, videos, games, and any other audio source playin
 - An Xbox-compatible XInput controller
 - Audio playing through a Windows playback device
 
-## Install
+## Download Standalone EXE
+
+You can download the pre-built standalone Windows executable directly (no Python environment or extraction needed):
+
+- [Download XboxAudioRumbleStudio.exe (Latest Release)](https://github.com/yisallu/xbox-audio-rumble-studio/releases/latest/download/XboxAudioRumbleStudio.exe)
+
+## Install from Source
 
 Clone the repository:
 

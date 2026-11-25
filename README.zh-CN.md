@@ -41,13 +41,13 @@ pip install numpy pyaudiowpatch
 python .\xbox6.py
 ```
 
-## 下载编译版
+## 下载编译版（推荐）
 
-也可以下载已打包的 Windows x64 版本：
+可以直接下载独立单文件 `.exe`（无需安装 Python，无需解压，下载后双击即可运行）：
 
-[XboxAudioRumbleStudio-windows-x64-v1.0.1.zip](https://github.com/yisallu/xbox-audio-rumble-studio/releases/download/v1.0.1/XboxAudioRumbleStudio-windows-x64-v1.0.1.zip)
+- [直接下载 XboxAudioRumbleStudio.exe（最新版）](https://github.com/yisallu/xbox-audio-rumble-studio/releases/latest/download/XboxAudioRumbleStudio.exe)
 
-解压后直接运行 `XboxAudioRumbleStudio.exe`，设置会自动保存在程序同目录下。
+运行后如果调整了设置，程序会自动在 `.exe` 同目录下保存 `XboxAudioRumbleStudio.settings.json`。
 
 ## 使用说明
 
