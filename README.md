@@ -2,24 +2,23 @@
 
 [中文说明](README.zh-CN.md)
 
-Xbox Audio Rumble Studio is a Windows desktop app that turns live system audio into Xbox controller vibration. It listens to the default WASAPI loopback device, analyzes volume and frequency bands in real time, then drives an XInput-compatible controller with tunable left/right motor feedback.
+Xbox Audio Rumble Studio is a clean, lightweight Windows desktop utility that turns live system audio into Xbox controller vibration. It listens to the default WASAPI loopback device, analyzes volume and frequency bands in real time, and drives an XInput-compatible controller with natural left/right motor feedback.
 
-It is designed for music, ASMR, videos, games, and any other audio source playing on the PC.
+It is designed for music, ASMR, videos, games, and any other audio source playing on your PC.
 
 ## Features
 
-- Live Windows system-audio capture through WASAPI loopback
-- XInput vibration output for Xbox-compatible controllers
-- Automatic content profiling for music, ASMR, and quiet scenes
-- Presets for vocal clarity, low-frequency immersion, soft texture, and full-band punch
-- Tunable overall intensity, rhythm punch, texture amount, threshold, attack, release, and gamma response
-- Dual-motor mode plus vocal-focused mode
-- Live visual meters and runtime status logs
-- Local JSON settings persistence in `xbox6.settings.json`
+- **Clean, Human-Friendly Dark UI**: Streamlined card-based interface with high-DPI scaling, one-click scene modes, percentage feel sliders, and real-time response meters with a visual threshold marker
+- **LB + RB Controller Shortcut**: Press **LB + RB** simultaneously on your Xbox controller at any time to toggle vibration on or off (works even when audio is paused, with subtle haptic confirmation when enabled)
+- **Non-Blocking WASAPI Loopback Capture**: Smoothly tracks system audio and automatically reconnects if you switch playback devices (e.g., speakers to headphones)
+- **Smart Auto Mode & Scene Presets**: Automatically adapts to Music, ASMR, or Quiet scenes, or switch with one click between *Vocal Clarity*, *Bass Immersion*, *Soft Texture*, and *Full-Band Punch*
+- **Intuitive Feel Controls**: Adjust overall intensity, rhythm punch, and subtle texture right from the main window, while advanced curve/frequency settings and runtime logs are neatly tucked into an optional *Advanced & Logs* dialog
+- **One-Tap Ambient Calibration**: Samples 3 seconds of background noise to set an optimal trigger threshold automatically
+- **Settings Persistence**: Automatically saves your preferences to `xbox6.settings.json`
 
 ## Requirements
 
-- Windows
+- Windows 10 / 11
 - Python 3.10+
 - An Xbox-compatible XInput controller
 - Audio playing through a Windows playback device
@@ -50,21 +49,17 @@ python .\xbox6.py
 1. Connect an Xbox-compatible controller.
 2. Start audio playback on Windows.
 3. Launch the app with `python .\xbox6.py`.
-4. Choose a preset or keep auto profile enabled.
-5. Adjust intensity, rhythm, texture, and response controls until the vibration feels right.
+4. Keep **Smart Auto** active or pick a preset card (*Vocal Clarity*, *Bass Immersion*, *Soft Texture*, *Full-Band Punch*).
+5. Adjust **Intensity**, **Rhythm Punch**, and **Subtle Texture** sliders to taste.
+6. Press **LB + RB** together on the controller (or click the top-right switch / press `Space` in the window) whenever you want to toggle vibration on or off.
 
-The app stores the latest settings next to the script as `xbox6.settings.json`.
+The app stores your latest settings next to the script as `xbox6.settings.json`.
 
 ## Notes
 
-- The app uses Windows XInput libraries, so it is Windows-only.
-- If the controller is not detected, reconnect it or check whether another controller tool is taking exclusive control.
-- Use moderate intensity for long sessions.
-- Stop vibration from the app before closing if a controller is actively rumbling.
-
-## Project Status
-
-This is a small standalone Python app. The current code is intentionally kept in one file so it is easy to run, inspect, and modify locally.
+- Uses Windows XInput and WASAPI APIs (Windows-only).
+- If the controller is not detected, reconnect it or check whether another controller mapper is taking exclusive control.
+- Vibration is automatically zeroed when toggled off or when the app closes.
 
 ## License
 
