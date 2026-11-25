@@ -262,69 +262,69 @@ PRESETS = {
         "dual_motor_mode": False,
         "vocal_only_mode": True,
         "adaptive_threshold": True,
-        "intensity": 0.72,
-        "rhythm_punch": 0.25,
-        "texture_amount": 0.45,
-        "vibration_threshold": 260.0,
-        "map_in_max": 4200.0,
-        "gamma_correction": 1.28,
-        "attack_rate": 0.38,
-        "release_rate": 0.12,
-        "dead_zone": 0.045,
-        "vocal_low": 650,
-        "vocal_high": 3600,
-        "bass_high": 520,
+        "intensity": 0.62,
+        "rhythm_punch": 0.18,
+        "texture_amount": 0.55,
+        "vibration_threshold": 185.0,
+        "map_in_max": 3600.0,
+        "gamma_correction": 1.22,
+        "attack_rate": 0.42,
+        "release_rate": 0.15,
+        "dead_zone": 0.028,
+        "vocal_low": 220,
+        "vocal_high": 3800,
+        "bass_high": 180,
     },
     "低频沉浸": {
         "dual_motor_mode": True,
         "vocal_only_mode": False,
         "adaptive_threshold": True,
-        "intensity": 0.86,
-        "rhythm_punch": 0.88,
-        "texture_amount": 0.22,
-        "vibration_threshold": 220.0,
-        "map_in_max": 5200.0,
-        "gamma_correction": 1.05,
-        "attack_rate": 0.46,
-        "release_rate": 0.16,
-        "dead_zone": 0.04,
-        "vocal_low": 600,
-        "vocal_high": 4000,
-        "bass_high": 640,
+        "intensity": 0.82,
+        "rhythm_punch": 0.85,
+        "texture_amount": 0.20,
+        "vibration_threshold": 175.0,
+        "map_in_max": 4800.0,
+        "gamma_correction": 0.96,
+        "attack_rate": 0.55,
+        "release_rate": 0.18,
+        "dead_zone": 0.032,
+        "vocal_low": 250,
+        "vocal_high": 4200,
+        "bass_high": 210,
     },
     "轻柔细腻": {
         "dual_motor_mode": False,
         "vocal_only_mode": True,
         "adaptive_threshold": True,
-        "intensity": 0.52,
-        "rhythm_punch": 0.10,
-        "texture_amount": 0.85,
-        "vibration_threshold": 340.0,
-        "map_in_max": 4800.0,
-        "gamma_correction": 1.55,
-        "attack_rate": 0.24,
-        "release_rate": 0.08,
-        "dead_zone": 0.06,
-        "vocal_low": 700,
-        "vocal_high": 3300,
-        "bass_high": 480,
+        "intensity": 0.45,
+        "rhythm_punch": 0.08,
+        "texture_amount": 0.82,
+        "vibration_threshold": 95.0,
+        "map_in_max": 2400.0,
+        "gamma_correction": 1.45,
+        "attack_rate": 0.22,
+        "release_rate": 0.06,
+        "dead_zone": 0.015,
+        "vocal_low": 240,
+        "vocal_high": 4200,
+        "bass_high": 160,
     },
     "全频强劲": {
-        "dual_motor_mode": False,
+        "dual_motor_mode": True,
         "vocal_only_mode": False,
         "adaptive_threshold": False,
-        "intensity": 1.0,
-        "rhythm_punch": 0.95,
-        "texture_amount": 0.65,
-        "vibration_threshold": 180.0,
-        "map_in_max": 6000.0,
-        "gamma_correction": 0.9,
-        "attack_rate": 0.58,
+        "intensity": 0.92,
+        "rhythm_punch": 0.90,
+        "texture_amount": 0.40,
+        "vibration_threshold": 150.0,
+        "map_in_max": 5400.0,
+        "gamma_correction": 0.88,
+        "attack_rate": 0.65,
         "release_rate": 0.22,
-        "dead_zone": 0.035,
-        "vocal_low": 600,
-        "vocal_high": 4200,
-        "bass_high": 700,
+        "dead_zone": 0.030,
+        "vocal_low": 240,
+        "vocal_high": 4800,
+        "bass_high": 250,
     },
 }
 
@@ -337,24 +337,24 @@ MODE_CARDS = [
 ]
 
 FEEL_DEFAULTS = {
-    "intensity": 0.72,
-    "rhythm_punch": 0.62,
-    "texture_amount": 0.58,
+    "intensity": 0.65,
+    "rhythm_punch": 0.60,
+    "texture_amount": 0.50,
 }
 
 ADVANCED_DEFAULTS = {
-    "dual_motor_mode": False,
-    "vocal_only_mode": True,
+    "dual_motor_mode": True,
+    "vocal_only_mode": False,
     "adaptive_threshold": True,
-    "vibration_threshold": 260.0,
-    "dead_zone": 0.045,
-    "attack_rate": 0.38,
-    "release_rate": 0.12,
-    "map_in_max": 4200.0,
-    "gamma_correction": 1.28,
-    "vocal_low": 650,
-    "vocal_high": 3600,
-    "bass_high": 520,
+    "vibration_threshold": 185.0,
+    "dead_zone": 0.028,
+    "attack_rate": 0.45,
+    "release_rate": 0.15,
+    "map_in_max": 4400.0,
+    "gamma_correction": 1.10,
+    "vocal_low": 240,
+    "vocal_high": 4000,
+    "bass_high": 210,
 }
 
 PERSISTED_KEYS = (
@@ -439,23 +439,23 @@ class SharedVibrationParams:
     enabled: bool = True
     controller_index: int = 0
     auto_profile: bool = True
-    rhythm_punch: float = 0.62
-    texture_amount: float = 0.58
-    dual_motor_mode: bool = False
-    vocal_only_mode: bool = True
+    rhythm_punch: float = 0.60
+    texture_amount: float = 0.50
+    dual_motor_mode: bool = True
+    vocal_only_mode: bool = False
     adaptive_threshold: bool = True
     auto_calibrating: bool = False
     reconnect_requested: bool = False
-    intensity: float = 0.72
-    vibration_threshold: float = 260.0
-    dead_zone: float = 0.045
-    attack_rate: float = 0.38
-    release_rate: float = 0.12
-    map_in_max: float = 4200.0
-    gamma_correction: float = 1.28
-    vocal_low: int = 650
-    vocal_high: int = 3600
-    bass_high: int = 520
+    intensity: float = 0.65
+    vibration_threshold: float = 185.0
+    dead_zone: float = 0.028
+    attack_rate: float = 0.45
+    release_rate: float = 0.15
+    map_in_max: float = 4400.0
+    gamma_correction: float = 1.10
+    vocal_low: int = 240
+    vocal_high: int = 4000
+    bass_high: int = 210
 
     # 运行时协调字段（不写入配置文件）
     audio_left: float = 0.0
@@ -717,6 +717,10 @@ def audio_vibration_thread(shared: SharedVibrationParams, log_queue: queue.Queue
     candidate_mode = "ASMR"
     candidate_since = 0.0
 
+    fft_win_size = 2048
+    fft_ring = np.zeros(fft_win_size, dtype=np.float32)
+    fft_window = np.hanning(fft_win_size).astype(np.float32)
+    fft_win_norm = float(np.mean(fft_window ** 2))
     fft_cache_key = None
     fft_freqs = None
     fft_weights = None
@@ -871,19 +875,25 @@ def audio_vibration_thread(shared: SharedVibrationParams, log_queue: queue.Queue
             if n == 0:
                 continue
 
-            if fft_cache_key != (n, rate):
-                fft_cache_key = (n, rate)
-                fft_freqs = np.fft.rfftfreq(n, 1.0 / rate)
-                fft_weights = np.full(len(fft_freqs), 2.0)
-                fft_weights[0] = 1.0
-                if n % 2 == 0:
-                    fft_weights[-1] = 1.0
+            if n >= fft_win_size:
+                fft_ring[:] = samples[-fft_win_size:]
+            else:
+                fft_ring[:-n] = fft_ring[n:]
+                fft_ring[-n:] = samples
 
-            fft_data = np.fft.rfft(samples)
+            if fft_cache_key != (fft_win_size, rate):
+                fft_cache_key = (fft_win_size, rate)
+                fft_freqs = np.fft.rfftfreq(fft_win_size, 1.0 / rate)
+                fft_weights = np.full(len(fft_freqs), 2.0 / fft_win_norm)
+                fft_weights[0] = 1.0 / fft_win_norm
+                if fft_win_size % 2 == 0:
+                    fft_weights[-1] = 1.0 / fft_win_norm
+
+            fft_data = np.fft.rfft(fft_ring * fft_window)
             power = (fft_data.real ** 2 + fft_data.imag ** 2) * fft_weights
 
-            bass_rms = band_rms_power(power, fft_freqs, 20.0, snap["bass_high"], n)
-            vocal_rms = band_rms_power(power, fft_freqs, snap["vocal_low"], snap["vocal_high"], n)
+            bass_rms = band_rms_power(power, fft_freqs, 25.0, snap["bass_high"], fft_win_size)
+            vocal_rms = band_rms_power(power, fft_freqs, snap["vocal_low"], snap["vocal_high"], fft_win_size)
             total_rms = float(np.sqrt(np.mean(np.square(samples)) + 1e-10))
 
             energy_avg = energy_avg * 0.965 + total_rms * 0.035
@@ -895,7 +905,7 @@ def audio_vibration_thread(shared: SharedVibrationParams, log_queue: queue.Queue
                 noise_floor = max(noise_floor * 0.97, total_rms, vocal_rms)
                 left_sec = max(0.0, calibration_until - now)
                 if now >= calibration_until:
-                    calibrated = clamp(max(120.0, noise_floor * 1.8), 40.0, 8000.0)
+                    calibrated = clamp(max(110.0, noise_floor * 1.75), 40.0, 8000.0)
                     with shared.lock:
                         shared.vibration_threshold = calibrated
                         shared.auto_calibrating = False
@@ -911,7 +921,12 @@ def audio_vibration_thread(shared: SharedVibrationParams, log_queue: queue.Queue
                     noise_floor += (level - noise_floor) * 0.0015
 
             raw_mode = classify_content(total_rms, vocal_rms, bass_rms, transient_avg, detected_mode)
-            if raw_mode != candidate_mode:
+            if detected_mode == "安静" and raw_mode != "安静":
+                # 从安静唤醒时立即切入有声模式，避免开头 1.2 秒被吞掉
+                detected_mode = raw_mode
+                candidate_mode = raw_mode
+                candidate_since = now
+            elif raw_mode != candidate_mode:
                 candidate_mode = raw_mode
                 candidate_since = now
             elif candidate_mode != detected_mode and (now - candidate_since) >= 1.2:
@@ -935,37 +950,37 @@ def audio_vibration_thread(shared: SharedVibrationParams, log_queue: queue.Queue
                         dual_motor_mode=True,
                         vocal_only_mode=False,
                         adaptive_threshold=True,
-                        vibration_threshold=max(170.0, noise_floor * 1.7),
-                        map_in_max=5600.0,
-                        gamma_correction=0.92,
-                        attack_rate=0.58,
+                        vibration_threshold=max(165.0, noise_floor * 1.65),
+                        map_in_max=5000.0,
+                        gamma_correction=0.95,
+                        attack_rate=0.55,
                         release_rate=0.17,
-                        dead_zone=0.035,
-                        intensity=clamp(snap["intensity"] * 0.92, 0.1, 1.0),
+                        dead_zone=0.030,
+                        intensity=clamp(snap["intensity"] * 0.95, 0.1, 1.0),
                     )
                 elif detected_mode == "ASMR":
                     effective.update(
                         dual_motor_mode=False,
                         vocal_only_mode=True,
                         adaptive_threshold=True,
-                        vibration_threshold=max(75.0, noise_floor * 1.18),
-                        map_in_max=2300.0,
-                        gamma_correction=1.75,
-                        attack_rate=0.20,
-                        release_rate=0.045,
-                        dead_zone=0.012,
-                        intensity=clamp(snap["intensity"] * 0.50, 0.05, 0.75),
+                        vibration_threshold=max(85.0, noise_floor * 1.20),
+                        map_in_max=2400.0,
+                        gamma_correction=1.50,
+                        attack_rate=0.22,
+                        release_rate=0.055,
+                        dead_zone=0.015,
+                        intensity=clamp(snap["intensity"] * 0.62, 0.05, 0.80),
                     )
                 else:
                     effective.update(
-                        vibration_threshold=max(260.0, noise_floor * 2.0),
-                        attack_rate=0.16,
-                        release_rate=0.09,
-                        dead_zone=0.05,
+                        vibration_threshold=max(220.0, noise_floor * 1.9),
+                        attack_rate=0.18,
+                        release_rate=0.10,
+                        dead_zone=0.04,
                         intensity=0.0,
                     )
 
-            adaptive_floor = noise_floor * 1.55 if effective["adaptive_threshold"] else 0.0
+            adaptive_floor = noise_floor * 1.50 if effective["adaptive_threshold"] else 0.0
             threshold = max(effective["vibration_threshold"], adaptive_floor)
 
             def calc_vib(rms_val: float) -> float:
@@ -973,33 +988,29 @@ def audio_vibration_thread(shared: SharedVibrationParams, log_queue: queue.Queue
                 return clamp(mapped * effective["intensity"])
 
             if effective["dual_motor_mode"]:
-                # 左马达为低频重型配重，右马达为高频轻型配重
+                # 左重型低频马达跑重低音鼓点，右轻型高频马达跑人声与细节
                 target_left = calc_vib(bass_rms)
                 target_right = calc_vib(vocal_rms)
+            elif effective["vocal_only_mode"]:
+                # 人声/轻柔模式下主力走右侧轻快小马达，左侧大马达仅做 35% 温暖衬托，避免发闷
+                v_out = calc_vib(vocal_rms)
+                target_left = v_out * 0.35
+                target_right = v_out
             else:
-                src = vocal_rms if effective["vocal_only_mode"] else total_rms
-                target_left = target_right = calc_vib(src)
+                target_left = target_right = calc_vib(total_rms)
 
-            if snap["auto_profile"] and detected_mode == "音乐":
+            # 节奏重拍脉冲（主要注入左侧低频大马达）与细腻呼吸微颤（主要注入右侧高频小马达）
+            if snap["rhythm_punch"] > 0.01 and (not snap["auto_profile"] or detected_mode == "音乐"):
                 beat_pulse = transient_avg * snap["rhythm_punch"] * snap["intensity"]
                 target_left = clamp(target_left + beat_pulse * 0.55)
-                target_right = clamp(target_right + beat_pulse * 0.22)
-            elif snap["auto_profile"] and detected_mode == "ASMR":
-                breath = clamp((vocal_rms - noise_floor * 0.85) / max(900.0, threshold * 4.0))
-                wave = 0.55 + 0.45 * math.sin(now * 2.0 * math.pi * 34.0)
-                texture = breath * snap["texture_amount"] * 0.075 * wave
-                target_left = clamp(target_left + texture * 0.82)
+                target_right = clamp(target_right + beat_pulse * 0.18)
+
+            if snap["texture_amount"] > 0.01 and vocal_rms > threshold * 0.70:
+                breath = clamp((vocal_rms - threshold * 0.70) / max(800.0, threshold * 3.0))
+                wave = 0.58 + 0.42 * math.sin(now * 2.0 * math.pi * 34.0)
+                texture = breath * snap["texture_amount"] * 0.105 * wave
                 target_right = clamp(target_right + texture)
-            elif not snap["auto_profile"]:
-                # 手动预设下同样让节奏冲击和细腻微颤滑块直观生效
-                if snap["rhythm_punch"] > 0.01:
-                    beat_pulse = transient_avg * snap["rhythm_punch"] * snap["intensity"] * 0.42
-                    target_left = clamp(target_left + beat_pulse)
-                if snap["texture_amount"] > 0.01 and vocal_rms > threshold * 0.75:
-                    breath = clamp((vocal_rms - threshold * 0.75) / max(1200.0, threshold * 3.5))
-                    wave = 0.55 + 0.45 * math.sin(now * 2.0 * math.pi * 34.0)
-                    texture = breath * snap["texture_amount"] * 0.055 * wave
-                    target_right = clamp(target_right + texture)
+                target_left = clamp(target_left + texture * 0.28)
 
             left_vib = smooth_signal(left_vib, target_left, effective["attack_rate"], effective["release_rate"])
             right_vib = smooth_signal(right_vib, target_right, effective["attack_rate"], effective["release_rate"])
@@ -1714,8 +1725,8 @@ class AdvancedDialog(tk.Toplevel):
             ("释放速度", "release_rate", 0.02, 0.60, lambda v: f"{v:.2f}", False),
             ("曲线伽马", "gamma_correction", 0.50, 2.40, lambda v: f"{v:.2f}", False),
             ("马达死区", "dead_zone", 0.0, 0.15, lambda v: f"{int(round(v * 100))}%", False),
-            ("低频上限", "bass_high", 120.0, 1200.0, lambda v: f"{int(round(v))} Hz", True),
-            ("人声下限", "vocal_low", 200.0, 2000.0, lambda v: f"{int(round(v))} Hz", True),
+            ("低频上限", "bass_high", 80.0, 600.0, lambda v: f"{int(round(v))} Hz", True),
+            ("人声下限", "vocal_low", 120.0, 1200.0, lambda v: f"{int(round(v))} Hz", True),
             ("人声上限", "vocal_high", 1500.0, 7000.0, lambda v: f"{int(round(v))} Hz", True),
         ]
         self.sliders = {}
