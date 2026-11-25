@@ -26,6 +26,8 @@ import pyaudiowpatch as pyaudio
 
 APP_TITLE = "Xbox Audio Rumble Studio"
 APP_PATH = Path(sys.executable if getattr(sys, "frozen", False) else __file__)
+RESOURCE_DIR = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
+ICON_FILE = RESOURCE_DIR / "app.ico"
 CONFIG_FILE = APP_PATH.with_suffix(".settings.json")
 
 XINPUT_SUCCESS = 0
@@ -2322,7 +2324,7 @@ def main():
     global UI_SCALE
     enable_dpi_awareness()
     try:
-        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("yisal.XboxAudioRumbleStudio")
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("yisal.XboxAudioRumbleStudio.v2")
     except Exception:
         pass
 
@@ -2336,9 +2338,12 @@ def main():
     apply_dark_titlebar(root)
 
     try:
-        icon = build_app_icon()
-        root.iconphoto(True, icon)
-        root._icon_ref = icon
+        if ICON_FILE.exists():
+            root.iconbitmap(default=str(ICON_FILE))
+        else:
+            icon = build_app_icon()
+            root.iconphoto(True, icon)
+            root._icon_ref = icon
     except Exception:
         pass
 
