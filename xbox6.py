@@ -263,6 +263,8 @@ PRESETS = {
         "vocal_only_mode": True,
         "adaptive_threshold": True,
         "intensity": 0.72,
+        "rhythm_punch": 0.25,
+        "texture_amount": 0.45,
         "vibration_threshold": 260.0,
         "map_in_max": 4200.0,
         "gamma_correction": 1.28,
@@ -278,6 +280,8 @@ PRESETS = {
         "vocal_only_mode": False,
         "adaptive_threshold": True,
         "intensity": 0.86,
+        "rhythm_punch": 0.88,
+        "texture_amount": 0.22,
         "vibration_threshold": 220.0,
         "map_in_max": 5200.0,
         "gamma_correction": 1.05,
@@ -293,6 +297,8 @@ PRESETS = {
         "vocal_only_mode": True,
         "adaptive_threshold": True,
         "intensity": 0.52,
+        "rhythm_punch": 0.10,
+        "texture_amount": 0.85,
         "vibration_threshold": 340.0,
         "map_in_max": 4800.0,
         "gamma_correction": 1.55,
@@ -308,6 +314,8 @@ PRESETS = {
         "vocal_only_mode": False,
         "adaptive_threshold": False,
         "intensity": 1.0,
+        "rhythm_punch": 0.95,
+        "texture_amount": 0.65,
         "vibration_threshold": 180.0,
         "map_in_max": 6000.0,
         "gamma_correction": 0.9,
@@ -2072,8 +2080,10 @@ class VibrationApp:
 
     def on_mode_selected(self, mode_name: str):
         if mode_name == "智能自动":
-            with self.shared.lock:
-                self.shared.auto_profile = True
+            auto_cfg = dict(FEEL_DEFAULTS)
+            auto_cfg["auto_profile"] = True
+            self.shared.apply(auto_cfg)
+            self.sync_ui_from_shared()
             self.log_queue.put("已启用「智能自动」模式（自动识别音乐 / ASMR / 安静场景）。")
         else:
             preset = dict(PRESETS[mode_name])
@@ -2091,10 +2101,13 @@ class VibrationApp:
         self.schedule_save()
 
     def reset_feel(self):
-        self.shared.apply(FEEL_DEFAULTS)
-        for attr, val in FEEL_DEFAULTS.items():
+        selected = self.mode_selector._selected
+        target = PRESETS[selected] if selected in PRESETS else FEEL_DEFAULTS
+        feel_vals = {k: target[k] for k in ("intensity", "rhythm_punch", "texture_amount")}
+        self.shared.apply(feel_vals)
+        for attr, val in feel_vals.items():
             self.feel_sliders[attr].set_value(val)
-        self.log_queue.put("手感滑块已恢复默认值。")
+        self.log_queue.put("手感滑块已恢复当前模式默认值。")
         self.schedule_save()
 
     def on_advanced_toggle(self):
