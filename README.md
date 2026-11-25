@@ -8,13 +8,12 @@ It is designed for music, ASMR, videos, games, and any other audio source playin
 
 ## Features
 
-- **Clean, Human-Friendly Dark UI**: Streamlined card-based interface with high-DPI scaling, one-click scene modes, percentage feel sliders, and real-time response meters with a visual threshold marker
-- **LB + RB Controller Shortcut**: Press **LB + RB** simultaneously on your Xbox controller at any time to toggle vibration on or off (works even when audio is paused, with subtle haptic confirmation when enabled)
-- **Non-Blocking WASAPI Loopback Capture**: Smoothly tracks system audio and automatically reconnects if you switch playback devices (e.g., speakers to headphones)
-- **Smart Auto Mode & Scene Presets**: Automatically adapts to Music, ASMR, or Quiet scenes, or switch with one click between *Vocal Clarity*, *Bass Immersion*, *Soft Texture*, and *Full-Band Punch*
-- **Intuitive Feel Controls**: Adjust overall intensity, rhythm punch, and subtle texture right from the main window, while advanced curve/frequency settings and runtime logs are neatly tucked into an optional *Advanced & Logs* dialog
-- **One-Tap Ambient Calibration**: Samples 3 seconds of background noise to set an optimal trigger threshold automatically
-- **Settings Persistence**: Automatically saves your preferences to `xbox6.settings.json`
+- **Minimalist Dark Studio UI**: Clean, distraction-free card layout with `4x LANCZOS` anti-aliased Apple-style switches (`动效` / `震动`), high-DPI scaling, one-click scene presets, and precision feel sliders
+- **ProMotion Adaptive VSync Visualizer**: Hardware `DwmFlush()` VBlank-synced 3-disc radial visualizer + clockwise motor fans that automatically match your monitor's refresh rate (`60Hz` / `120Hz` / `130Hz` / `144Hz`, `< 2.5%` CPU at full `130 FPS`, `0 FPS` / `~0.06%` CPU when paused or toggled off)
+- **LB + RB Controller Shortcut**: Press **LB + RB** simultaneously on your Xbox controller at any time to toggle vibration on or off (works even when audio is paused or minimized, with subtle haptic confirmation)
+- **Live Bluetooth & Headphone Hot-Switch**: Queries Windows CoreAudio active endpoints directly so switching Bluetooth headphones (Bose / AirPods / FreeBuds) or speakers reconnects automatically within ~1s, with non-compressing low-volume auto-gain and `< 55ms` instant pause brake
+- **Smart Auto & 5 Psychoacoustic Presets**: Automatically adapts to Music, ASMR, or Quiet scenes, or switch with one click between *Vocal Clarity*, *Bass Immersion*, *Soft Texture*, and *Full-Band Punch*
+- **One-Tap Ambient Calibration & Persistence**: Samples 3 seconds of background noise to set an optimal trigger threshold and saves preferences automatically
 
 ## Requirements
 
@@ -41,7 +40,7 @@ cd xbox-audio-rumble-studio
 Install the Python dependencies:
 
 ```powershell
-pip install numpy pyaudiowpatch
+pip install numpy pyaudiowpatch pillow
 ```
 
 ## Run
