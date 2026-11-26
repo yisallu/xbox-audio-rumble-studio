@@ -6,6 +6,16 @@ Xbox Audio Rumble Studio is a clean, lightweight Windows desktop utility that tu
 
 It is designed for music, ASMR, videos, games, and any other audio source playing on your PC.
 
+## Preview
+
+### Minimalist Studio Main UI
+![Xbox Audio Rumble Studio Main UI](assets/studio_main_ui.png)
+
+### Double-Click Per-Pixel Transparent Floating HUD (Live Demo)
+Double-click the center sphere to strip away all window chrome and backgrounds — leaving only the glowing 3-ring visualizer floating transparently over any desktop app, video, or webpage (freely draggable, double-click again to restore):
+
+![Transparent Floating HUD Live Demo](assets/transparent_hud_live.gif)
+
 ## Features
 
 - **Minimalist Dark Studio UI**: Clean, distraction-free card layout with `4x LANCZOS` anti-aliased Apple-style switches (`动效` / `震动`), high-DPI scaling, one-click scene presets, and precision feel sliders
