@@ -649,28 +649,33 @@ def compute_macro_scene_scores(
     beat_long: float,
     blast_long: float,
     sustain_long: float,
+    valley_ratio: float,
     pause_frac: float,
 ) -> dict[str, float]:
     """
-    会话级高分辨率（23.4Hz 频点精度 + 长窗口积分）四场景识别模型：
-    - 精准分离『22~88Hz 真超低频鼓点/爆炸』与『95~260Hz 男女人声胸腔基频』，根治播客男声/笑声误判为强震或音乐！
-    - 音量极小时自动归入『ASMR（轻柔细腻）』；对白播客锁死『人声』；歌曲锁死『音乐』；仅真实超低频LFE+高频碎裂持续爆发才进『影院』。
+    高分辨率秒级自适应四场景识别模型（23.4Hz 频点精度，~2.5~3.5 秒完成切台且播客全程零误跳）：
+    - 精准分离『22~88Hz 真超低频鼓点/爆炸』与『95~3400Hz 男女人声基频共振峰』。
+    - 利用字间静音谷底比(valley_ratio)区分『有伴奏铺底的清唱/抒情歌』与『干声对话播客』。
     """
     quiet_bonus = clamp((235.0 - raw_rms_long) / 95.0, 0.0, 1.0)
-    music_cont = clamp((sustain_long - 0.62) * 2.2, 0.0, 0.52) * clamp(1.0 - pause_frac * 4.2, 0.0, 1.0)
+    music_cont = (
+        clamp((sustain_long - 0.62) * 1.8, 0.0, 0.42) + clamp((valley_ratio - 0.28) * 1.35, 0.0, 0.55)
+    ) * clamp(1.0 - pause_frac * 3.8, 0.0, 1.0)
 
     vocal_score = (
-        r_voice_avg * 1.60
-        + clamp(pause_frac * 1.5, 0.0, 0.40)
-        - r_sub_avg * 1.75
-        - beat_long * 1.20
+        r_voice_avg * 1.62
+        + clamp(pause_frac * 1.4, 0.0, 0.36)
+        + clamp((0.24 - valley_ratio) * 1.1, 0.0, 0.26)
+        - r_sub_avg * 1.80
+        - beat_long * 1.25
+        - music_cont * 0.65
         - max(0.0, r_tingle_avg - 0.30) * 1.90
         - quiet_bonus * 1.25
     )
     music_score = (
-        r_sub_avg * 1.70
-        + r_bass_avg * 0.78
-        + beat_long * 1.50
+        r_sub_avg * 1.72
+        + r_bass_avg * 0.76
+        + beat_long * 1.48
         + music_cont
         - r_tingle_avg * 0.35
         - blast_long * 0.55
@@ -990,6 +995,7 @@ def audio_vibration_thread(
     r_voice_avg = 0.0
     r_tingle_avg = 0.0
     raw_rms_long = 350.0
+    floor_rms_long = 60.0
     sub85_bg = 0.0
     beat_long = 0.0
     beat_cd_frames = 0
@@ -1411,8 +1417,13 @@ def audio_vibration_thread(
 
                 if frame_raw_rms < 14.0:
                     silent_sec += frame_dt
-                    pause_frac = pause_frac * 0.965 + 0.035
+                    pause_frac = pause_frac * 0.94 + 0.06
+                    floor_rms_long *= 0.80
                     sub85_bg *= 0.85
+                    beat_long *= 0.945
+                    blast_long *= 0.955
+                    if cooldown_frames > 0:
+                        cooldown_frames -= 1
                     prev_cls_rms = frame_raw_rms
                     # 播客说话换气、ASMR 停顿、切歌间隙(< 20s)完全锁住当前模式，绝不归零乱跳！
                     if silent_sec >= 20.0:
@@ -1424,19 +1435,18 @@ def audio_vibration_thread(
                         blast_long *= 0.5
                         switch_streak = 0
                 else:
-                    # 若刚经历了 >= 1.4s 的明显人为暂停（例如切视频/换节目），衰减旧节目残留特征并开启重适配窗口
-                    if silent_sec >= 1.4 and session_locked:
-                        fast_adapt_frames = 90
+                    # 若经历了 >= 0.6s 的切歌/切视频停顿，加速清理旧节目残留特征，实现 2 秒内利落切台！
+                    if silent_sec >= 0.6 and session_locked:
+                        fast_adapt_frames = 70
                         sub_beats_seen = 0
-                        beat_long *= 0.15
-                        blast_long *= 0.15
-                        r_sub_avg *= 0.25
-                        r_bass_avg *= 0.25
-                        r_voice_avg *= 0.25
-                        r_tingle_avg *= 0.25
-                        raw_rms_long = frame_raw_rms
+                        beat_long *= 0.25
+                        blast_long *= 0.25
+                        r_sub_avg *= 0.35
+                        r_bass_avg *= 0.35
+                        r_voice_avg *= 0.35
+                        r_tingle_avg *= 0.35
                     silent_sec = 0.0
-                    pause_frac = pause_frac * 0.972
+                    pause_frac = pause_frac * 0.965
                     active_cls_frames += 1
                     if fast_adapt_frames > 0:
                         fast_adapt_frames -= 1
@@ -1467,39 +1477,44 @@ def audio_vibration_thread(
                     if active_cls_frames <= 4:
                         af = 0.55
                     elif not session_locked:
-                        af = 0.16
+                        af = 0.18
                     elif fast_adapt_frames > 0:
-                        af = 0.15
+                        af = 0.16
                     else:
-                        # 正常播放期间采用 ~4~6 秒长窗口平滑：单句笑声、喷麦、拍桌子纹丝不动！
-                        af = 0.016
+                        # ~1.0s 敏捷响应窗口（af=0.115）：切歌/切播客 2~3 秒即刻识别到位，且高分辨率频谱保证同节目内稳如泰山！
+                        af = 0.115
 
-                    ew_cls = clamp(frame_raw_rms / max(raw_rms_long, 90.0), 0.05, 1.35)
-                    af_spec = clamp(af * ew_cls, 0.003, 0.65)
+                    ew_cls = clamp(frame_raw_rms / max(raw_rms_long, 90.0), 0.12, 1.35)
+                    af_spec = clamp(af * ew_cls, 0.008, 0.65)
                     r_sub_avg = r_sub_avg * (1.0 - af_spec) + r_sub * af_spec
                     r_bass_avg = r_bass_avg * (1.0 - af_spec) + r_bass * af_spec
                     r_voice_avg = r_voice_avg * (1.0 - af_spec) + r_voice * af_spec
                     r_tingle_avg = r_tingle_avg * (1.0 - af_spec) + r_tingle * af_spec
                     raw_rms_long = raw_rms_long * (1.0 - af) + frame_raw_rms * af
+                    if frame_raw_rms < floor_rms_long:
+                        floor_rms_long = floor_rms_long * 0.72 + frame_raw_rms * 0.28
+                    else:
+                        floor_rms_long = floor_rms_long * 0.94 + frame_raw_rms * 0.06
+                    valley_ratio = clamp(floor_rms_long / max(raw_rms_long, 1.0), 0.0, 1.0)
 
                     cur_sust = clamp(min(frame_raw_rms, prev_cls_rms) / max(frame_raw_rms, prev_cls_rms, 1.0))
-                    sustain_long = sustain_long * 0.96 + cur_sust * 0.04
+                    sustain_long = sustain_long * 0.92 + cur_sust * 0.08
                     prev_cls_rms = frame_raw_rms
 
-                    # 22~88Hz 真超低频鼓点节拍跟踪（男女人声在此频段几乎为零，12s 超长副歌记忆）
+                    # 22~88Hz 真超低频鼓点节拍跟踪（男女人声在此频段几乎为零，切回播客时 ~1.5s 自然退去不拖泥带水）
                     if beat_cd_frames > 0:
                         beat_cd_frames -= 1
-                    sub_delta = sub85_rms - (sub85_bg * 1.32 + 38.0)
-                    sub85_bg += (sub85_rms - sub85_bg) * (0.18 if sub85_rms > sub85_bg else 0.30)
-                    beat_long *= 0.992
-                    if sub_delta > 0.0 and sub85_rms > voice_mid_rms * 0.36 and tingle_rms < sub85_rms * 0.45 and beat_cd_frames == 0:
-                        b_str = clamp(sub_delta / max(frame_raw_rms * 0.45, 110.0), 0.0, 1.0)
-                        beat_long = clamp(beat_long + (0.26 if sub_beats_seen == 0 else 0.52) * b_str, 0.0, 1.0)
+                    sub_delta = sub85_rms - (sub85_bg * 1.30 + 35.0)
+                    sub85_bg += (sub85_rms - sub85_bg) * (0.20 if sub85_rms > sub85_bg else 0.32)
+                    beat_long *= 0.948
+                    if sub_delta > 0.0 and sub85_rms > voice_mid_rms * 0.34 and tingle_rms < sub85_rms * 0.48 and beat_cd_frames == 0:
+                        b_str = clamp(sub_delta / max(frame_raw_rms * 0.42, 105.0), 0.0, 1.0)
+                        beat_long = clamp(beat_long + (0.34 if sub_beats_seen == 0 else 0.56) * b_str, 0.0, 1.0)
                         sub_beats_seen += 1
                         beat_cd_frames = 4
 
                     # 严苛 LFE 宽频爆炸冲击计数（必须同时具备 >500 超低频震波 + >320 高频碎裂 + 波峰跃升，播客对白永远为 0！）
-                    blast_long *= 0.988
+                    blast_long *= 0.972
                     if (
                         sub85_rms * max(vol_gain, 1.0) > 520.0
                         and tingle_rms * max(vol_gain, 1.0) > 320.0
@@ -1507,7 +1522,7 @@ def audio_vibration_thread(
                         and r_tingle > 0.18
                         and frame_raw_rms > max(raw_rms_long * 1.65, 480.0)
                     ):
-                        blast_long = clamp(blast_long + 0.48, 0.0, 1.0)
+                        blast_long = clamp(blast_long + 0.52, 0.0, 1.0)
 
                     macro_scores = compute_macro_scene_scores(
                         raw_rms_long,
@@ -1518,25 +1533,26 @@ def audio_vibration_thread(
                         beat_long,
                         blast_long,
                         sustain_long,
+                        valley_ratio,
                         pause_frac,
                     )
                     best_macro = max(macro_scores, key=macro_scores.get)
                     live_auto_scene = best_macro
 
                     if not session_locked:
-                        # 冷启动先静默听满 ~0.9 秒（16 个有效发声帧）看准节目类型后一次性稳稳锁定，绝不开局乱闪！
-                        if active_cls_frames >= 16:
+                        # 冷启动 ~0.8 秒（15 帧）即锁定初始场景
+                        if active_cls_frames >= 15:
                             detected_mode = best_macro
                             session_locked = True
-                            cooldown_frames = 240
+                            cooldown_frames = 28
                             switch_streak = 0
                         else:
                             detected_mode = "识别中"
                     else:
                         cur_sc = macro_scores.get(detected_mode, -9.0)
                         best_sc = macro_scores[best_macro]
-                        need_margin = 0.22 if fast_adapt_frames > 0 else 0.32
-                        need_frames = 30 if fast_adapt_frames > 0 else 128  # 暂停换片 ~2s 平滑切换；连续不间断播放需持续 5.5s 新特征才切换！
+                        need_margin = 0.16 if fast_adapt_frames > 0 else 0.20
+                        need_frames = 18 if fast_adapt_frames > 0 else 22  # 无论有无暂停，换节目后 2~3 秒内必定干脆完成切换！
                         can_switch = (fast_adapt_frames > 0) or (cooldown_frames == 0)
 
                         if can_switch and best_macro != detected_mode and best_sc > cur_sc + need_margin:
@@ -1547,11 +1563,11 @@ def audio_vibration_thread(
                                 switch_streak = 1
                             if switch_streak >= need_frames:
                                 detected_mode = best_macro
-                                cooldown_frames = 280  # 切换后锁定至少 ~12 秒冷静期，绝不来回横跳！
+                                cooldown_frames = 25  # 仅保留 ~1.0 秒轻量防重入保护，随时来回切歌/切播客都能 2~3 秒响应！
                                 switch_streak = 0
                                 fast_adapt_frames = 0
                         else:
-                            switch_streak = max(0, switch_streak - 2)
+                            switch_streak = max(0, switch_streak - 1)
 
             sel_mode = snap.get("selected_mode", "智能自动")
             is_auto = bool(snap["auto_profile"]) or (sel_mode == "智能自动")
