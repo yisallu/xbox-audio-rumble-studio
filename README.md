@@ -12,8 +12,9 @@ It is designed for music, ASMR, videos, games, and any other audio source playin
 - **ProMotion Adaptive VSync Visualizer**: Hardware `DwmFlush()` VBlank-synced 3-disc radial visualizer + clockwise motor fans that automatically match your monitor's refresh rate (`60Hz` / `120Hz` / `130Hz` / `144Hz`, `< 2.5%` CPU at full `130 FPS`, `0 FPS` / `~0.06%` CPU when paused or toggled off)
 - **LB + RB Controller Shortcut**: Press **LB + RB** simultaneously on your Xbox controller at any time to toggle vibration on or off (works even when audio is paused or minimized, with subtle haptic confirmation)
 - **Live Bluetooth & Headphone Hot-Switch**: Queries Windows CoreAudio active endpoints directly so switching Bluetooth headphones (Bose / AirPods / FreeBuds) or speakers reconnects automatically within ~1s, with non-compressing low-volume auto-gain and `< 55ms` instant pause brake
-- **Smart Auto & 5 Psychoacoustic Presets**: Automatically adapts to Music, ASMR, or Quiet scenes, or switch with one click between *Vocal Clarity*, *Bass Immersion*, *Soft Texture*, and *Full-Band Punch*
-- **One-Tap Ambient Calibration & Persistence**: Samples 3 seconds of background noise to set an optimal trigger threshold and saves preferences automatically
+- **True Stereo Directional & Pure Onset Haptics**: Independent Left/Right channel Hann-windowed FFT + adaptive baseline cancellation (`fast_env - bg_env`) — vibrates sharply on drum hits, plucks, spoken syllables, and binaural triggers with true left/right ear spatial directionality, settling to `0.0%` stillness within `~100ms` on sustained pads, chords, or white noise
+- **Session-Scale Smart Auto & 5 Independent Presets**: `2048`-point (`23.4 Hz` bin) long-window session classifier calmly locks onto *Music*, *Vocal / Podcast*, *ASMR / Quiet*, or *Game / Cinema* with subtle top-pill status indication and zero mid-session jitter; every mode independently remembers your custom slider tweaks with one-click per-mode **Restore Default**
+- **One-Tap Ambient Calibration & Persistence**: Samples 3 seconds of background noise to set an optimal trigger threshold and saves per-mode profiles automatically
 
 ## Requirements
 

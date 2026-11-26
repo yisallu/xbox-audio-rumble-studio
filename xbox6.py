@@ -310,76 +310,102 @@ def is_controller_connected(index: int) -> bool:
 # 预设与共享状态模型
 # ---------------------------------------------------------------------------
 
-PRESETS = {
+MODE_NAMES = ("智能自动", "人声清晰", "低频沉浸", "轻柔细腻", "全频强劲")
+
+FACTORY_PROFILES: dict[str, dict] = {
+    "智能自动": {
+        "auto_profile": True,
+        "dual_motor_mode": True,
+        "vocal_only_mode": False,
+        "adaptive_threshold": True,
+        "intensity": 0.76,
+        "rhythm_punch": 0.72,
+        "texture_amount": 0.56,
+        "vibration_threshold": 165.0,
+        "map_in_max": 4200.0,
+        "gamma_correction": 1.28,
+        "attack_rate": 0.72,
+        "release_rate": 0.44,
+        "dead_zone": 0.012,
+        "vocal_low": 180,
+        "vocal_high": 5400,
+        "bass_high": 210,
+    },
     "人声清晰": {
+        "auto_profile": False,
         "dual_motor_mode": False,
         "vocal_only_mode": True,
         "adaptive_threshold": True,
         "intensity": 0.72,
-        "rhythm_punch": 0.12,
-        "texture_amount": 0.42,
-        "vibration_threshold": 185.0,
-        "map_in_max": 3600.0,
-        "gamma_correction": 1.34,
-        "attack_rate": 0.56,
-        "release_rate": 0.34,
+        "rhythm_punch": 0.18,
+        "texture_amount": 0.68,
+        "vibration_threshold": 145.0,
+        "map_in_max": 3200.0,
+        "gamma_correction": 1.05,
+        "attack_rate": 0.68,
+        "release_rate": 0.46,
         "dead_zone": 0.012,
-        "vocal_low": 280,
-        "vocal_high": 4500,
-        "bass_high": 200,
+        "vocal_low": 180,
+        "vocal_high": 4600,
+        "bass_high": 165,
     },
     "低频沉浸": {
+        "auto_profile": False,
         "dual_motor_mode": True,
         "vocal_only_mode": False,
         "adaptive_threshold": True,
-        "intensity": 0.88,
+        "intensity": 0.86,
         "rhythm_punch": 0.92,
-        "texture_amount": 0.15,
-        "vibration_threshold": 185.0,
-        "map_in_max": 4800.0,
-        "gamma_correction": 1.62,
-        "attack_rate": 0.78,
-        "release_rate": 0.36,
-        "dead_zone": 0.014,
-        "vocal_low": 650,
+        "texture_amount": 0.22,
+        "vibration_threshold": 175.0,
+        "map_in_max": 4600.0,
+        "gamma_correction": 1.38,
+        "attack_rate": 0.80,
+        "release_rate": 0.46,
+        "dead_zone": 0.013,
+        "vocal_low": 550,
         "vocal_high": 5200,
         "bass_high": 215,
     },
     "轻柔细腻": {
+        "auto_profile": False,
         "dual_motor_mode": False,
         "vocal_only_mode": True,
         "adaptive_threshold": True,
-        "intensity": 0.36,
-        "rhythm_punch": 0.12,
-        "texture_amount": 0.82,
-        "vibration_threshold": 68.0,
-        "map_in_max": 2400.0,
-        "gamma_correction": 0.84,
-        "attack_rate": 0.42,
-        "release_rate": 0.26,
-        "dead_zone": 0.012,
+        "intensity": 0.40,
+        "rhythm_punch": 0.10,
+        "texture_amount": 0.84,
+        "vibration_threshold": 65.0,
+        "map_in_max": 2300.0,
+        "gamma_correction": 0.82,
+        "attack_rate": 0.56,
+        "release_rate": 0.42,
+        "dead_zone": 0.010,
         "vocal_low": 280,
-        "vocal_high": 7800,
-        "bass_high": 180,
+        "vocal_high": 8000,
+        "bass_high": 175,
     },
     "全频强劲": {
+        "auto_profile": False,
         "dual_motor_mode": True,
         "vocal_only_mode": False,
         "adaptive_threshold": True,
-        "intensity": 1.0,
-        "rhythm_punch": 0.96,
-        "texture_amount": 0.58,
-        "vibration_threshold": 185.0,
-        "map_in_max": 4400.0,
-        "gamma_correction": 1.18,
-        "attack_rate": 0.84,
-        "release_rate": 0.30,
-        "dead_zone": 0.015,
-        "vocal_low": 420,
-        "vocal_high": 6800,
-        "bass_high": 300,
+        "intensity": 0.96,
+        "rhythm_punch": 0.95,
+        "texture_amount": 0.72,
+        "vibration_threshold": 155.0,
+        "map_in_max": 3900.0,
+        "gamma_correction": 0.92,
+        "attack_rate": 0.88,
+        "release_rate": 0.44,
+        "dead_zone": 0.013,
+        "vocal_low": 320,
+        "vocal_high": 7200,
+        "bass_high": 280,
     },
 }
+
+PRESETS = {k: dict(v) for k, v in FACTORY_PROFILES.items() if k != "智能自动"}
 
 MODE_CARDS = [
     ("智能自动", "自动适配场景", CYAN_HI),
@@ -389,30 +415,32 @@ MODE_CARDS = [
     ("全频强劲", "游戏 · 影院", ORANGE),
 ]
 
-FEEL_DEFAULTS = {
-    "intensity": 0.76,
-    "rhythm_punch": 0.72,
-    "texture_amount": 0.56,
-}
+FEEL_KEYS = ("intensity", "rhythm_punch", "texture_amount")
 
-ADVANCED_DEFAULTS = {
-    "dual_motor_mode": False,
-    "vocal_only_mode": True,
-    "adaptive_threshold": True,
-    "vibration_threshold": 185.0,
-    "dead_zone": 0.012,
-    "attack_rate": 0.58,
-    "release_rate": 0.34,
-    "map_in_max": 3800.0,
-    "gamma_correction": 1.34,
-    "vocal_low": 280,
-    "vocal_high": 5200,
-    "bass_high": 220,
-}
+ADVANCED_KEYS = (
+    "dual_motor_mode",
+    "vocal_only_mode",
+    "adaptive_threshold",
+    "vibration_threshold",
+    "dead_zone",
+    "attack_rate",
+    "release_rate",
+    "map_in_max",
+    "gamma_correction",
+    "vocal_low",
+    "vocal_high",
+    "bass_high",
+)
+
+PROFILE_PARAM_KEYS = ("auto_profile",) + FEEL_KEYS + ADVANCED_KEYS
+
+FEEL_DEFAULTS = {k: FACTORY_PROFILES["智能自动"][k] for k in FEEL_KEYS}
+ADVANCED_DEFAULTS = {k: FACTORY_PROFILES["智能自动"][k] for k in ADVANCED_KEYS}
 
 PERSISTED_KEYS = (
     "enabled",
     "controller_index",
+    "selected_mode",
     "auto_profile",
     "rhythm_punch",
     "texture_amount",
@@ -453,6 +481,8 @@ def sanitize_settings(raw: dict) -> dict:
     if not isinstance(raw, dict):
         return {}
     cleaned = {}
+    if "selected_mode" in raw and raw["selected_mode"] in MODE_NAMES:
+        cleaned["selected_mode"] = str(raw["selected_mode"])
     for key in ("enabled", "visualizer_enabled", "auto_profile", "dual_motor_mode", "vocal_only_mode", "adaptive_threshold"):
         if key in raw and isinstance(raw[key], (bool, int)):
             cleaned[key] = bool(raw[key])
@@ -487,6 +517,9 @@ class RuntimeStats:
     calibrating_left: float = 0.0
     beat_pulse: float = 0.0
     spectrum: tuple = (0.0,) * 24
+    spectrum_l: tuple = (0.0,) * 24
+    spectrum_r: tuple = (0.0,) * 24
+    manual_override: bool = False
 
 
 @dataclass
@@ -495,6 +528,7 @@ class SharedVibrationParams:
     enabled: bool = True
     visualizer_enabled: bool = True
     controller_index: int = 0
+    selected_mode: str = "智能自动"
     auto_profile: bool = True
     rhythm_punch: float = 0.72
     texture_amount: float = 0.56
@@ -560,6 +594,9 @@ class SharedVibrationParams:
                     "calibrating_left": st.calibrating_left,
                     "beat_pulse": st.beat_pulse,
                     "spectrum": st.spectrum,
+                    "spectrum_l": st.spectrum_l,
+                    "spectrum_r": st.spectrum_r,
+                    "manual_override": st.manual_override,
                 }
             return data
 
@@ -603,34 +640,64 @@ def apply_motor_deadzone(value: float, dead_zone: float) -> float:
     return clamp(value)
 
 
-def classify_content(
-    total_rms: float,
-    vocal_rms: float,
-    kick_rms: float,
-    rhythm_env: float,
-    bass_ratio_avg: float,
-    crisp_rms: float,
-    prev: str,
-) -> str:
-    if total_rms < 50.0 and rhythm_env < 0.12:
-        return "安静"
-    total = max(total_rms, 1.0)
-    vocal_crisp_ratio = min(1.3, (vocal_rms + crisp_rms * 0.75) / total)
+def compute_macro_scene_scores(
+    raw_rms_long: float,
+    r_sub_avg: float,
+    r_bass_avg: float,
+    r_voice_avg: float,
+    r_tingle_avg: float,
+    beat_long: float,
+    blast_long: float,
+    sustain_long: float,
+    pause_frac: float,
+) -> dict[str, float]:
+    """
+    会话级高分辨率（23.4Hz 频点精度 + 长窗口积分）四场景识别模型：
+    - 精准分离『22~88Hz 真超低频鼓点/爆炸』与『95~260Hz 男女人声胸腔基频』，根治播客男声/笑声误判为强震或音乐！
+    - 音量极小时自动归入『ASMR（轻柔细腻）』；对白播客锁死『人声』；歌曲锁死『音乐』；仅真实超低频LFE+高频碎裂持续爆发才进『影院』。
+    """
+    quiet_bonus = clamp((235.0 - raw_rms_long) / 95.0, 0.0, 1.0)
+    music_cont = clamp((sustain_long - 0.62) * 2.2, 0.0, 0.52) * clamp(1.0 - pause_frac * 4.2, 0.0, 1.0)
 
-    # 采用 1.5s 鼓点节拍包络(rhythm_env)与平均低频占比，避免鼓点间隙(400ms)反复跳回 ASMR！
-    music_score = bass_ratio_avg * 1.45 + rhythm_env * 1.75
-    asmr_score = vocal_crisp_ratio * 0.92 + (1.0 - min(rhythm_env * 1.9, 1.0)) * 0.55 - bass_ratio_avg * 0.65
+    vocal_score = (
+        r_voice_avg * 1.60
+        + clamp(pause_frac * 1.5, 0.0, 0.40)
+        - r_sub_avg * 1.75
+        - beat_long * 1.20
+        - max(0.0, r_tingle_avg - 0.30) * 1.90
+        - quiet_bonus * 1.25
+    )
+    music_score = (
+        r_sub_avg * 1.70
+        + r_bass_avg * 0.78
+        + beat_long * 1.50
+        + music_cont
+        - r_tingle_avg * 0.35
+        - blast_long * 0.55
+        - quiet_bonus * 0.85
+    )
+    asmr_score = (
+        quiet_bonus * 1.95
+        + r_tingle_avg * 2.10
+        - r_sub_avg * 1.65
+        - beat_long * 0.95
+    )
+    # 严苛硬门限：凡是人声占比高、真超低频(<88Hz)不足、音量轻柔或无连续宽频爆炸冲击，一律禁止进入『影院(全频强劲)』！
+    if r_sub_avg < 0.24 or r_voice_avg > 0.70 or blast_long < 0.36 or quiet_bonus > 0.25:
+        cinema_score = -1.0
+    else:
+        cinema_score = (
+            blast_long * 2.50
+            + r_sub_avg * 0.85
+            + r_tingle_avg * 0.65
+        )
 
-    if prev == "音乐":
-        music_score += 0.14
-    elif prev == "ASMR":
-        asmr_score += 0.12
-
-    if music_score > asmr_score + 0.10:
-        return "音乐"
-    if asmr_score > music_score + 0.08:
-        return "ASMR"
-    return prev if prev in {"音乐", "ASMR"} else "ASMR"
+    return {
+        "音乐": music_score,
+        "人声": vocal_score,
+        "ASMR": asmr_score,
+        "影院": cinema_score,
+    }
 
 
 def controller_io_thread(
@@ -711,7 +778,8 @@ def controller_io_thread(
                     last_sent = None
 
             with shared.lock:
-                if now < shared.override_until:
+                is_ovr = now < shared.override_until
+                if is_ovr:
                     out_left = shared.override_left
                     out_right = shared.override_right
                 elif shared.enabled:
@@ -722,6 +790,7 @@ def controller_io_thread(
                     out_right = 0.0
 
                 shared.stats.controller_connected = connected
+                shared.stats.manual_override = is_ovr
                 shared.stats.left_output = out_left if connected else 0.0
                 shared.stats.right_output = out_right if connected else 0.0
                 shared.stats.peak_left = max(shared.stats.peak_left * 0.96, shared.stats.left_output)
@@ -902,18 +971,57 @@ def audio_vibration_thread(
     transient_avg = 0.0
     kick_avg = 0.0
     crisp_avg = 0.0
-    rhythm_env = 0.0
-    bass_ratio_avg = 0.0
     session_peak = 950.0
-    detected_mode = "ASMR"
-    candidate_mode = "ASMR"
-    candidate_chunks = 0
+
+    # 会话级长窗口声学识别状态（2048点高分辨率频谱 + 分钟级稳态锁存，说话停顿/笑声/清唱过门绝不乱跳！）
+    detected_mode = "安静"
+    live_auto_scene = "人声"
+    session_locked = False
+    cls_N = 2048
+    cls_ring_l = np.zeros(cls_N, dtype=np.float32)
+    cls_ring_r = np.zeros(cls_N, dtype=np.float32)
+    cls_accum = 0
+    cls_rate_cached = 0
+    cls_hann = None
+    cls_weights = None
+    cls_bins = (1, 4, 8, 145, 405)
+    r_sub_avg = 0.0
+    r_bass_avg = 0.0
+    r_voice_avg = 0.0
+    r_tingle_avg = 0.0
+    raw_rms_long = 350.0
+    sub85_bg = 0.0
+    beat_long = 0.0
+    beat_cd_frames = 0
+    sub_beats_seen = 0
+    blast_long = 0.0
+    sustain_long = 0.55
+    pause_frac = 0.15
+    prev_cls_rms = 0.0
+    active_cls_frames = 0
+    silent_sec = 25.0
+    fast_adapt_frames = 0
+    cooldown_frames = 0
+    switch_cand = ""
+    switch_streak = 0
+
+    # 自适应持续背景基线跟踪器：只提取声音的起伏/瞬态变化量，持续平直伴奏或长音 0.1s 内自动归零绝不一直空转！
+    bg_env = {
+        "kick_l": 0.0, "kick_r": 0.0,
+        "bass_l": 0.0, "bass_r": 0.0,
+        "vocal_l": 0.0, "vocal_r": 0.0,
+        "crisp_l": 0.0, "crisp_r": 0.0,
+    }
+    fast_env = dict(bg_env)
 
     fft_cache_key = None
     fft_freqs = None
     fft_weights = None
     fft_hann = None
-    vis_spec_smooth = [0.0] * 24
+    vis_spec_l = [0.0] * 24
+    vis_spec_r = [0.0] * 24
+    vis_bg_l = [0.0] * 24
+    vis_bg_r = [0.0] * 24
     spec_slices: list[tuple[int, int]] = []
     band_idx_cache_key = None
     band_idx_slices = (0, 0, 0, 0, 0, 0, 0, 0)
@@ -1057,10 +1165,20 @@ def audio_vibration_thread(
                     shared.stats.bass_rms *= 0.72
                     shared.stats.peak_rms *= 0.95
                     shared.stats.beat_pulse *= 0.65
-                    shared.stats.spectrum = tuple(v * 0.65 for v in shared.stats.spectrum)
+                    shared.stats.spectrum = tuple(v * 0.60 for v in shared.stats.spectrum)
+                    shared.stats.spectrum_l = tuple(v * 0.60 for v in shared.stats.spectrum_l)
+                    shared.stats.spectrum_r = tuple(v * 0.60 for v in shared.stats.spectrum_r)
                     if shared.stats.total_rms < 5.0:
                         shared.stats.total_rms = 0.0
-                        shared.stats.detected_mode = "安静"
+                        if silent_sec >= 20.0:
+                            detected_mode = "安静"
+                            session_locked = False
+                            active_cls_frames = 0
+                        shared.stats.detected_mode = detected_mode
+                silent_sec += 0.04
+                for k_bg in bg_env:
+                    bg_env[k_bg] *= 0.75
+                    fast_env[k_bg] *= 0.65
                 noise_floor *= 0.90
                 if noise_floor < 1.0:
                     noise_floor = 0.0
@@ -1071,12 +1189,18 @@ def audio_vibration_thread(
                     next_connect_at = now + 0.5
                 continue
 
-            samples = np.frombuffer(raw, dtype=np.int16).astype(np.float32)
-            if channels > 1:
-                usable = (len(samples) // channels) * channels
-                if usable == 0:
+            raw_i16 = np.frombuffer(raw, dtype=np.int16)
+            if channels >= 2:
+                n_frames = len(raw_i16) // channels
+                if n_frames == 0:
                     continue
-                samples = samples[:usable].reshape(-1, channels).mean(axis=1)
+                stereo = raw_i16[: n_frames * channels].reshape(n_frames, channels)
+                samples_l = stereo[:, 0].astype(np.float32)
+                samples_r = stereo[:, 1].astype(np.float32)
+                samples = (samples_l + samples_r) * np.float32(0.5)
+            else:
+                samples = raw_i16.astype(np.float32)
+                samples_l = samples_r = samples
 
             n = len(samples)
             if n == 0:
@@ -1100,60 +1224,82 @@ def audio_vibration_thread(
                     spec_slices.append((a, b))
                 spec_ref = 160.0
 
-            fft_data = np.fft.rfft(samples)
-            power = (fft_data.real ** 2 + fft_data.imag ** 2) * fft_weights
-
-            # 单次前缀和替代每帧切片求和；视觉频谱单独加 Hann 窗消除矩形窗旁瓣闪烁抖动，使高刷动画如丝绸顺滑
-            csum = [0.0] + np.cumsum(power, dtype=np.float64).tolist()
+            # 真立体声双通道 Hann 加窗频谱分析：完整保留左耳/右耳空间方位感，彻底消除矩形窗截断泄漏伪影，并复用同一次 FFT 省半算力！
+            fft_l = np.fft.rfft(samples_l * fft_hann)
+            fft_r = np.fft.rfft(samples_r * fft_hann)
+            power_l = (fft_l.real ** 2 + fft_l.imag ** 2) * fft_weights
+            power_r = (fft_r.real ** 2 + fft_r.imag ** 2) * fft_weights
+            csum_l = [0.0] + np.cumsum(power_l, dtype=np.float64).tolist()
+            csum_r = [0.0] + np.cumsum(power_r, dtype=np.float64).tolist()
             inv_n2 = 1.0 / (n * n)
 
             if snap["visualizer_enabled"] and snap["enabled"]:
-                vis_fft = np.fft.rfft(samples * fft_hann)
-                vis_power = (vis_fft.real ** 2 + vis_fft.imag ** 2) * fft_weights
-                vis_csum = [0.0] + np.cumsum(vis_power, dtype=np.float64).tolist()
-                band_vals = [math.sqrt(max(0.0, vis_csum[b] - vis_csum[a]) * inv_n2 + 1e-12) for a, b in spec_slices]
-                cur_peak = max(band_vals) if band_vals else 0.0
+                bvals_l = [math.sqrt(max(0.0, csum_l[b] - csum_l[a]) * inv_n2 + 1e-12) for a, b in spec_slices]
+                bvals_r = [math.sqrt(max(0.0, csum_r[b] - csum_r[a]) * inv_n2 + 1e-12) for a, b in spec_slices]
+                cur_peak = max(max(bvals_l, default=0.0), max(bvals_r, default=0.0))
                 spec_ref = max(spec_ref * 0.988, cur_peak * 0.92, 75.0)
-                for bi, lv in enumerate(band_vals):
-                    raw_sv = clamp(((lv / spec_ref) - 0.08) / 0.88) ** 1.28
-                    prev_sv = vis_spec_smooth[bi]
-                    vis_spec_smooth[bi] = prev_sv + (raw_sv - prev_sv) * (0.72 if raw_sv > prev_sv else 0.44)
-                spectrum = tuple(vis_spec_smooth)
+                # 对每个频段减去慢速背景底噪，仅让真正突出的音符/鼓点形成尖锐方向峰，彻底告别圆盘整圈糊平！
+                mean_l = sum(bvals_l) / 24.0
+                mean_r = sum(bvals_r) / 24.0
+                for bi in range(24):
+                    lv = bvals_l[bi]
+                    rv = bvals_r[bi]
+                    vis_bg_l[bi] += (lv - vis_bg_l[bi]) * (0.14 if lv > vis_bg_l[bi] else 0.25)
+                    vis_bg_r[bi] += (rv - vis_bg_r[bi]) * (0.14 if rv > vis_bg_r[bi] else 0.25)
+                    net_l = max(0.0, lv - max(vis_bg_l[bi] * 0.62, mean_l * 0.52))
+                    net_r = max(0.0, rv - max(vis_bg_r[bi] * 0.62, mean_r * 0.52))
+                    sv_l = clamp((net_l / (spec_ref * 0.68)) - 0.04) ** 1.32
+                    sv_r = clamp((net_r / (spec_ref * 0.68)) - 0.04) ** 1.32
+                    vis_spec_l[bi] += (sv_l - vis_spec_l[bi]) * (0.76 if sv_l > vis_spec_l[bi] else 0.48)
+                    vis_spec_r[bi] += (sv_r - vis_spec_r[bi]) * (0.76 if sv_r > vis_spec_r[bi] else 0.48)
+                spectrum_l = tuple(vis_spec_l)
+                spectrum_r = tuple(vis_spec_r)
+                spectrum = tuple(max(vis_spec_l[i], vis_spec_r[i]) for i in range(24))
             else:
-                spectrum = (0.0,) * 24
+                spectrum = spectrum_l = spectrum_r = (0.0,) * 24
 
-            # 4 个独立声学感知频段（严格排除 0Hz 直流分量，彻底杜绝暂停音乐后直流残余让左马达空转！）
+            # 4 个独立声学感知频段（k_hi=155Hz 严格锚定真低音底鼓，避开 165~260Hz 播客男声胸腔基频！）
             b_key = (n, rate, snap["bass_high"], snap["vocal_low"], snap["vocal_high"])
             if band_idx_cache_key != b_key:
                 band_idx_cache_key = b_key
                 k_lo = int(np.searchsorted(fft_freqs, 20.0, side="left"))
-                k_hi = int(np.searchsorted(fft_freqs, 220.0, side="right"))
+                k_hi = int(np.searchsorted(fft_freqs, 155.0, side="right"))
                 b_hi = int(np.searchsorted(fft_freqs, snap["bass_high"], side="right"))
                 v_lo = int(np.searchsorted(fft_freqs, snap["vocal_low"], side="left"))
                 v_hi = int(np.searchsorted(fft_freqs, snap["vocal_high"], side="right"))
-                c_lo = int(np.searchsorted(fft_freqs, 2400.0, side="left"))
-                c_hi = int(np.searchsorted(fft_freqs, 8200.0, side="right"))
+                c_lo = int(np.searchsorted(fft_freqs, 2200.0, side="left"))
+                c_hi = int(np.searchsorted(fft_freqs, 8500.0, side="right"))
                 band_idx_slices = (k_lo, k_hi, k_lo, b_hi, v_lo, v_hi, c_lo, c_hi)
 
             kl0, kh0, bl0, bh0, vl0, vh0, cl0, ch0 = band_idx_slices
-            raw_kick_rms = (math.sqrt(max(0.0, csum[kh0] - csum[kl0]) * inv_n2 + 1e-12) * 1.18) if kh0 > kl0 else 0.0
-            raw_bass_rms = (math.sqrt(max(0.0, csum[bh0] - csum[bl0]) * inv_n2 + 1e-12) * 1.12) if bh0 > bl0 else 0.0
-            raw_vocal_rms = math.sqrt(max(0.0, csum[vh0] - csum[vl0]) * inv_n2 + 1e-12) if vh0 > vl0 else 0.0
-            raw_crisp_rms = math.sqrt(max(0.0, csum[ch0] - csum[cl0]) * inv_n2 + 1e-12) if ch0 > cl0 else 0.0
-            raw_total_rms = float(np.sqrt(np.mean(np.square(samples)) + 1e-10))
 
-            # 暂停/静音急刹门限：当蓝牙或浏览器暂停播放但仍推送零值/底噪空包时，毫秒级立即刹停！
+            def seg_rms(cs: list[float], a: int, b: int, scale: float = 1.0) -> float:
+                return (math.sqrt(max(0.0, cs[b] - cs[a]) * inv_n2 + 1e-12) * scale) if b > a else 0.0
+
+            rk_l, rk_r = seg_rms(csum_l, kl0, kh0, 1.18), seg_rms(csum_r, kl0, kh0, 1.18)
+            rb_l, rb_r = seg_rms(csum_l, bl0, bh0, 1.12), seg_rms(csum_r, bl0, bh0, 1.12)
+            rv_l, rv_r = seg_rms(csum_l, vl0, vh0), seg_rms(csum_r, vl0, vh0)
+            rc_l, rc_r = seg_rms(csum_l, cl0, ch0), seg_rms(csum_r, cl0, ch0)
+
+            raw_kick_rms = max(rk_l, rk_r)
+            raw_bass_rms = max(rb_l, rb_r)
+            raw_vocal_rms = max(rv_l, rv_r)
+            raw_crisp_rms = max(rc_l, rc_r)
+            raw_rms_l = float(np.sqrt(np.mean(np.square(samples_l)) + 1e-10))
+            raw_rms_r = float(np.sqrt(np.mean(np.square(samples_r)) + 1e-10))
+            raw_total_rms = max(raw_rms_l, raw_rms_r)
+
+            # 暂停/静音急刹门限
             silence_gate = 14.0
             is_paused_silence = (not snap["auto_calibrating"]) and (raw_total_rms < silence_gate)
             if not is_paused_silence and vis_wake_event is not None and snap["visualizer_enabled"] and snap["enabled"]:
                 vis_wake_event.set()
 
-            # 长时会话峰值自适应增益（仅补偿系统耳机总音量偏低，绝不在小声音/轻音段落拉高增益制造底震！）
+            # 长时会话峰值自适应增益（仅补偿耳机总音量偏低，微弱声音冻结峰值绝不放大）
             if not snap["auto_calibrating"] and not is_paused_silence:
                 if raw_total_rms > session_peak:
                     session_peak = session_peak * 0.30 + raw_total_rms * 0.70
                 elif raw_total_rms > 130.0:
-                    # 仅在正常中等以上音量持续播放时慢速自适应；微弱小声音时冻结峰值绝不放大成大底震！
                     session_peak = max(340.0, session_peak * 0.9996)
                 base_gain = clamp(1120.0 / max(session_peak, 340.0), 1.0, 3.0)
                 quiet_taper = clamp((raw_total_rms - 18.0) / 80.0)
@@ -1167,21 +1313,46 @@ def audio_vibration_thread(
             crisp_rms = raw_crisp_rms * vol_gain
             total_rms = raw_total_rms * vol_gain
 
-            # 独立频段瞬态节拍检测（严格抑制微弱底噪误触发，保留真实鼓点干脆爆发！）
-            energy_avg = energy_avg * 0.955 + total_rms * 0.045
-            transient = clamp((total_rms - energy_avg * 1.05) / max(energy_avg * 0.90, 190.0), 0.0, 1.0)
-            transient_avg = transient_avg * 0.72 + transient * 0.28
+            # 核心突破：自适应基线抵消（Onset Delta）——该震才震，持续长音/伴奏 100ms 内自动归零，绝不一直嗡嗡空转！
+            def update_ch_onset(key: str, val: float, adapt_up: float = 0.16, adapt_dn: float = 0.25, margin: float = 1.14) -> float:
+                fe = val if val > fast_env[key] else (fast_env[key] * 0.52 + val * 0.48)
+                fast_env[key] = fe
+                bg = bg_env[key]
+                # 仅提取高于当前持续背景基线 (bg * margin) 的动态起伏/瞬态脉冲
+                onset = max(0.0, fe - bg * margin)
+                bg_env[key] = bg + (val - bg) * (adapt_up if val > bg else adapt_dn)
+                return onset
+
+            on_kick_l = update_ch_onset("kick_l", rk_l * vol_gain, 0.15, 0.26, 1.12)
+            on_kick_r = update_ch_onset("kick_r", rk_r * vol_gain, 0.15, 0.26, 1.12)
+            on_bass_l = update_ch_onset("bass_l", rb_l * vol_gain, 0.15, 0.26, 1.12)
+            on_bass_r = update_ch_onset("bass_r", rb_r * vol_gain, 0.15, 0.26, 1.12)
+            on_vocal_l = update_ch_onset("vocal_l", rv_l * vol_gain, 0.17, 0.26, 1.15)
+            on_vocal_r = update_ch_onset("vocal_r", rv_r * vol_gain, 0.17, 0.26, 1.15)
+            on_crisp_l = update_ch_onset("crisp_l", rc_l * vol_gain, 0.18, 0.28, 1.15)
+            on_crisp_r = update_ch_onset("crisp_r", rc_r * vol_gain, 0.18, 0.28, 1.15)
+
+            # 立体声方位锐化器：左耳声偏左震、右耳声偏右震，拒绝左右平均糊成一团！
+            def sharpen_stereo(el: float, er: float, exp_k: float = 1.6) -> tuple[float, float]:
+                hi = max(el, er, 1e-6)
+                if hi <= 1e-5:
+                    return 0.0, 0.0
+                return el * ((el / hi) ** exp_k), er * ((er / hi) ** exp_k)
+
+            on_kick_l, on_kick_r = sharpen_stereo(on_kick_l, on_kick_r, 1.55)
+            on_bass_l, on_bass_r = sharpen_stereo(on_bass_l, on_bass_r, 1.55)
+            on_vocal_l, on_vocal_r = sharpen_stereo(on_vocal_l, on_vocal_r, 1.85)
+            on_crisp_l, on_crisp_r = sharpen_stereo(on_crisp_l, on_crisp_r, 1.95)
+
+            prev_energy_avg = energy_avg
+            energy_avg = energy_avg * 0.93 + total_rms * 0.07
+            transient = clamp((total_rms - prev_energy_avg * 1.08) / max(prev_energy_avg * 0.85, 160.0), 0.0, 1.0)
+            transient_avg = transient_avg * 0.65 + transient * 0.35
 
             kick_avg = kick_avg * 0.90 + kick_rms * 0.10
-            kick_flux = clamp((kick_rms - kick_avg * 1.06) / max(kick_avg * 0.84, 185.0), 0.0, 1.0)
-            rhythm_env = max(rhythm_env * 0.982, kick_flux)
-            if total_rms > 65.0:
-                bass_ratio_avg = bass_ratio_avg * 0.94 + (kick_rms / max(total_rms, 1.0)) * 0.06
-            else:
-                bass_ratio_avg *= 0.92
-
+            kick_flux = clamp((kick_rms - kick_avg * 1.08) / max(kick_avg * 0.82, 160.0), 0.0, 1.0)
             crisp_avg = crisp_avg * 0.88 + crisp_rms * 0.12
-            crisp_flux = clamp((crisp_rms - crisp_avg * 1.06) / max(crisp_avg * 0.82, 130.0), 0.0, 1.0)
+            crisp_flux = clamp((crisp_rms - crisp_avg * 1.08) / max(crisp_avg * 0.80, 115.0), 0.0, 1.0)
 
             now = time.monotonic()
             if snap["auto_calibrating"]:
@@ -1203,26 +1374,195 @@ def audio_vibration_thread(
                 else:
                     noise_floor *= 0.995
 
-            raw_mode = classify_content(total_rms, vocal_rms, kick_rms, rhythm_env, bass_ratio_avg, crisp_rms, detected_mode)
-            if detected_mode == "安静" and raw_mode != "安静":
-                detected_mode = raw_mode
-                candidate_mode = raw_mode
-                candidate_chunks = 0
-            elif raw_mode != candidate_mode:
-                candidate_mode = raw_mode
-                candidate_chunks = 1
-            elif candidate_mode != detected_mode:
-                candidate_chunks += 1
-                need_chunks = 18 if (candidate_mode == "音乐" and kick_flux > 0.35) else 38
-                if candidate_chunks >= need_chunks:
-                    detected_mode = candidate_mode
-                    candidate_chunks = 0
+            # -----------------------------------------------------------------
+            # 会话级高分辨率自动识别器（2048 点滑窗 = 23.4Hz 频点分辨率，每 ~42ms 分析一次）
+            # 说话停顿(<20s)、主持人大笑、喷麦、歌曲清唱副歌绝不切换模式；仅真正换节目才平滑切换！
+            # -----------------------------------------------------------------
+            if n >= cls_N:
+                cls_ring_l[:] = samples_l[-cls_N:]
+                cls_ring_r[:] = samples_r[-cls_N:]
+            else:
+                cls_ring_l[:-n] = cls_ring_l[n:]
+                cls_ring_l[-n:] = samples_l
+                cls_ring_r[:-n] = cls_ring_r[n:]
+                cls_ring_r[-n:] = samples_r
+            cls_accum += n
+
+            if cls_rate_cached != rate:
+                cls_rate_cached = rate
+                cfreqs = np.fft.rfftfreq(cls_N, 1.0 / rate)
+                cls_weights = np.full(len(cfreqs), 2.0, dtype=np.float32)
+                cls_weights[0] = 1.0
+                cls_weights[-1] = 1.0
+                cls_hann = (np.hanning(cls_N) * 1.633).astype(np.float32)
+                i_22 = max(1, int(np.searchsorted(cfreqs, 22.0, side="left")))
+                i_88 = max(i_22 + 1, int(np.searchsorted(cfreqs, 88.0, side="right")))
+                i_165 = max(i_88 + 1, int(np.searchsorted(cfreqs, 165.0, side="right")))
+                i_3400 = max(i_165 + 1, int(np.searchsorted(cfreqs, 3400.0, side="right")))
+                i_9500 = max(i_3400 + 1, int(np.searchsorted(cfreqs, min(9500.0, rate * 0.45), side="right")))
+                cls_bins = (i_22, i_88, i_165, i_3400, i_9500)
+
+            if cls_accum >= cls_N:
+                frame_dt = cls_accum / max(rate, 8000)
+                cls_accum = 0
+                rms_cl = float(np.sqrt(np.mean(np.square(cls_ring_l)) + 1e-10))
+                rms_cr = float(np.sqrt(np.mean(np.square(cls_ring_r)) + 1e-10))
+                frame_raw_rms = max(rms_cl, rms_cr)
+
+                if frame_raw_rms < 14.0:
+                    silent_sec += frame_dt
+                    pause_frac = pause_frac * 0.965 + 0.035
+                    sub85_bg *= 0.85
+                    prev_cls_rms = frame_raw_rms
+                    # 播客说话换气、ASMR 停顿、切歌间隙(< 20s)完全锁住当前模式，绝不归零乱跳！
+                    if silent_sec >= 20.0:
+                        detected_mode = "安静"
+                        session_locked = False
+                        active_cls_frames = 0
+                        sub_beats_seen = 0
+                        beat_long *= 0.5
+                        blast_long *= 0.5
+                        switch_streak = 0
+                else:
+                    # 若刚经历了 >= 1.4s 的明显人为暂停（例如切视频/换节目），衰减旧节目残留特征并开启重适配窗口
+                    if silent_sec >= 1.4 and session_locked:
+                        fast_adapt_frames = 90
+                        sub_beats_seen = 0
+                        beat_long *= 0.15
+                        blast_long *= 0.15
+                        r_sub_avg *= 0.25
+                        r_bass_avg *= 0.25
+                        r_voice_avg *= 0.25
+                        r_tingle_avg *= 0.25
+                        raw_rms_long = frame_raw_rms
+                    silent_sec = 0.0
+                    pause_frac = pause_frac * 0.972
+                    active_cls_frames += 1
+                    if fast_adapt_frames > 0:
+                        fast_adapt_frames -= 1
+                    if cooldown_frames > 0:
+                        cooldown_frames -= 1
+
+                    # 双声道非相干功率谱合成：彻底杜绝 3D 双耳 ASMR / HRTF 游戏反相抵消，单耳轻语同样 100% 灵敏捕捉！
+                    cfft_l = np.fft.rfft(cls_ring_l * cls_hann)
+                    cfft_r = np.fft.rfft(cls_ring_r * cls_hann)
+                    cpow = np.maximum(cfft_l.real ** 2 + cfft_l.imag ** 2, cfft_r.real ** 2 + cfft_r.imag ** 2) * cls_weights
+                    inv_cn2 = 1.0 / (cls_N * cls_N)
+                    b0, b1, b2, b3, b4 = cls_bins
+                    e_sub = float(cpow[b0:b1].sum()) * inv_cn2      # 22~88Hz 真超低频(底鼓/LFE爆炸)
+                    e_ubass = float(cpow[b1:b2].sum()) * inv_cn2    # 88~165Hz 上低频/男声胸腔基频
+                    e_voice = float(cpow[b2:b3].sum()) * inv_cn2    # 165~3400Hz 核心人声共振峰与主旋律
+                    e_tingle = float(cpow[b3:b4].sum()) * inv_cn2   # 3400~9500Hz 高频齿音/ASMR触发/碎裂声
+                    e_tot = e_sub + e_ubass + e_voice + e_tingle + 1e-9
+
+                    sub85_rms = math.sqrt(e_sub)
+                    voice_mid_rms = math.sqrt(e_voice + 0.45 * e_ubass)
+                    tingle_rms = math.sqrt(e_tingle)
+
+                    r_sub = math.sqrt(e_sub / e_tot)
+                    r_bass = math.sqrt((e_sub + 0.55 * e_ubass) / e_tot)
+                    r_voice = math.sqrt((e_voice + 0.45 * e_ubass) / e_tot)
+                    r_tingle = math.sqrt(e_tingle / e_tot)
+
+                    if active_cls_frames <= 4:
+                        af = 0.55
+                    elif not session_locked:
+                        af = 0.16
+                    elif fast_adapt_frames > 0:
+                        af = 0.15
+                    else:
+                        # 正常播放期间采用 ~4~6 秒长窗口平滑：单句笑声、喷麦、拍桌子纹丝不动！
+                        af = 0.016
+
+                    ew_cls = clamp(frame_raw_rms / max(raw_rms_long, 90.0), 0.05, 1.35)
+                    af_spec = clamp(af * ew_cls, 0.003, 0.65)
+                    r_sub_avg = r_sub_avg * (1.0 - af_spec) + r_sub * af_spec
+                    r_bass_avg = r_bass_avg * (1.0 - af_spec) + r_bass * af_spec
+                    r_voice_avg = r_voice_avg * (1.0 - af_spec) + r_voice * af_spec
+                    r_tingle_avg = r_tingle_avg * (1.0 - af_spec) + r_tingle * af_spec
+                    raw_rms_long = raw_rms_long * (1.0 - af) + frame_raw_rms * af
+
+                    cur_sust = clamp(min(frame_raw_rms, prev_cls_rms) / max(frame_raw_rms, prev_cls_rms, 1.0))
+                    sustain_long = sustain_long * 0.96 + cur_sust * 0.04
+                    prev_cls_rms = frame_raw_rms
+
+                    # 22~88Hz 真超低频鼓点节拍跟踪（男女人声在此频段几乎为零，12s 超长副歌记忆）
+                    if beat_cd_frames > 0:
+                        beat_cd_frames -= 1
+                    sub_delta = sub85_rms - (sub85_bg * 1.32 + 38.0)
+                    sub85_bg += (sub85_rms - sub85_bg) * (0.18 if sub85_rms > sub85_bg else 0.30)
+                    beat_long *= 0.992
+                    if sub_delta > 0.0 and sub85_rms > voice_mid_rms * 0.36 and tingle_rms < sub85_rms * 0.45 and beat_cd_frames == 0:
+                        b_str = clamp(sub_delta / max(frame_raw_rms * 0.45, 110.0), 0.0, 1.0)
+                        beat_long = clamp(beat_long + (0.26 if sub_beats_seen == 0 else 0.52) * b_str, 0.0, 1.0)
+                        sub_beats_seen += 1
+                        beat_cd_frames = 4
+
+                    # 严苛 LFE 宽频爆炸冲击计数（必须同时具备 >500 超低频震波 + >320 高频碎裂 + 波峰跃升，播客对白永远为 0！）
+                    blast_long *= 0.988
+                    if (
+                        sub85_rms * max(vol_gain, 1.0) > 520.0
+                        and tingle_rms * max(vol_gain, 1.0) > 320.0
+                        and r_sub > 0.28
+                        and r_tingle > 0.18
+                        and frame_raw_rms > max(raw_rms_long * 1.65, 480.0)
+                    ):
+                        blast_long = clamp(blast_long + 0.48, 0.0, 1.0)
+
+                    macro_scores = compute_macro_scene_scores(
+                        raw_rms_long,
+                        r_sub_avg,
+                        r_bass_avg,
+                        r_voice_avg,
+                        r_tingle_avg,
+                        beat_long,
+                        blast_long,
+                        sustain_long,
+                        pause_frac,
+                    )
+                    best_macro = max(macro_scores, key=macro_scores.get)
+                    live_auto_scene = best_macro
+
+                    if not session_locked:
+                        # 冷启动先静默听满 ~0.9 秒（16 个有效发声帧）看准节目类型后一次性稳稳锁定，绝不开局乱闪！
+                        if active_cls_frames >= 16:
+                            detected_mode = best_macro
+                            session_locked = True
+                            cooldown_frames = 240
+                            switch_streak = 0
+                        else:
+                            detected_mode = "识别中"
+                    else:
+                        cur_sc = macro_scores.get(detected_mode, -9.0)
+                        best_sc = macro_scores[best_macro]
+                        need_margin = 0.22 if fast_adapt_frames > 0 else 0.32
+                        need_frames = 30 if fast_adapt_frames > 0 else 128  # 暂停换片 ~2s 平滑切换；连续不间断播放需持续 5.5s 新特征才切换！
+                        can_switch = (fast_adapt_frames > 0) or (cooldown_frames == 0)
+
+                        if can_switch and best_macro != detected_mode and best_sc > cur_sc + need_margin:
+                            if switch_cand == best_macro:
+                                switch_streak += 1
+                            else:
+                                switch_cand = best_macro
+                                switch_streak = 1
+                            if switch_streak >= need_frames:
+                                detected_mode = best_macro
+                                cooldown_frames = 280  # 切换后锁定至少 ~12 秒冷静期，绝不来回横跳！
+                                switch_streak = 0
+                                fast_adapt_frames = 0
+                        else:
+                            switch_streak = max(0, switch_streak - 2)
+
+            sel_mode = snap.get("selected_mode", "智能自动")
+            is_auto = bool(snap["auto_profile"]) or (sel_mode == "智能自动")
 
             effective = {
                 "dual_motor_mode": snap["dual_motor_mode"],
                 "vocal_only_mode": snap["vocal_only_mode"],
                 "adaptive_threshold": snap["adaptive_threshold"],
                 "intensity": snap["intensity"],
+                "rhythm_punch": snap["rhythm_punch"],
+                "texture_amount": snap["texture_amount"],
                 "vibration_threshold": snap["vibration_threshold"],
                 "dead_zone": snap["dead_zone"],
                 "attack_rate": snap["attack_rate"],
@@ -1230,132 +1570,137 @@ def audio_vibration_thread(
                 "map_in_max": snap["map_in_max"],
                 "gamma_correction": snap["gamma_correction"],
             }
-            if snap["auto_profile"]:
-                if detected_mode == "音乐":
-                    # 智能音乐档：彻底压掉持续伴奏底震(steady仅作轻托底)，全靠鼓点瞬态(kick_flux/crisp_flux)跟手爆发！
+
+            active_engine = sel_mode
+            if is_auto:
+                # 智能自动：根据实时识别的 4 大场景自动切换最优声学参数，并按用户在自动档调校的滑块比例等比缩放！
+                auto_base = FACTORY_PROFILES["智能自动"]
+                int_ratio = snap["intensity"] / max(0.10, auto_base["intensity"])
+                punch_ratio = snap["rhythm_punch"] / max(0.05, auto_base["rhythm_punch"])
+                tex_ratio = snap["texture_amount"] / max(0.05, auto_base["texture_amount"])
+                thr_ratio = snap["vibration_threshold"] / max(40.0, auto_base["vibration_threshold"])
+
+                scene_to_preset = {
+                    "音乐": "低频沉浸",
+                    "人声": "人声清晰",
+                    "ASMR": "轻柔细腻",
+                    "影院": "全频强劲",
+                }
+                # 冷启动前 1 秒('识别中')已用实时预判场景平顺驱动震动，UI 指示灯则等 1 秒定型后再亮起绝不闪跳
+                eff_scene = detected_mode if detected_mode in scene_to_preset else (live_auto_scene if not is_paused_silence and detected_mode == "识别中" else "安静")
+                mapped_preset = scene_to_preset.get(eff_scene)
+                if mapped_preset is not None:
+                    p_cfg = FACTORY_PROFILES[mapped_preset]
+                    # 智能音乐在低频沉浸基础上兼顾清脆军鼓/拨弦交替，因此保留更灵动的细节比例
+                    base_punch = 0.78 if eff_scene == "音乐" else p_cfg["rhythm_punch"]
+                    base_tex = 0.54 if eff_scene == "音乐" else p_cfg["texture_amount"]
+                    base_int = 0.80 if eff_scene == "音乐" else p_cfg["intensity"]
                     effective.update(
-                        dual_motor_mode=True,
-                        vocal_only_mode=False,
+                        dual_motor_mode=p_cfg["dual_motor_mode"],
+                        vocal_only_mode=p_cfg["vocal_only_mode"],
                         adaptive_threshold=True,
-                        vibration_threshold=max(185.0, noise_floor * 1.65),
-                        map_in_max=4800.0,
-                        gamma_correction=1.58,
-                        attack_rate=0.76,
-                        release_rate=0.38,
-                        dead_zone=0.012,
-                        intensity=clamp(snap["intensity"] * 0.96, 0.10, 1.0),
+                        vibration_threshold=clamp(p_cfg["vibration_threshold"] * thr_ratio, 40.0, 8000.0),
+                        map_in_max=p_cfg["map_in_max"],
+                        gamma_correction=1.22 if eff_scene == "音乐" else p_cfg["gamma_correction"],
+                        attack_rate=p_cfg["attack_rate"],
+                        release_rate=p_cfg["release_rate"],
+                        dead_zone=snap["dead_zone"],
+                        intensity=clamp(base_int * int_ratio, 0.08, 1.0),
+                        rhythm_punch=clamp(base_punch * punch_ratio, 0.0, 1.0),
+                        texture_amount=clamp(base_tex * tex_ratio, 0.0, 1.0),
                     )
-                elif detected_mode == "ASMR":
-                    # 智能轻柔/人声档：保留 1.5%~22% 细腻微震梯度，右小马达轻柔酥麻，左重锤绝不轰鸣抢戏！
-                    effective.update(
-                        dual_motor_mode=False,
-                        vocal_only_mode=True,
-                        adaptive_threshold=True,
-                        vibration_threshold=max(72.0, noise_floor * 1.30),
-                        map_in_max=2600.0,
-                        gamma_correction=0.88,
-                        attack_rate=0.44,
-                        release_rate=0.28,
-                        dead_zone=0.012,
-                        intensity=clamp(snap["intensity"] * 0.44, 0.08, 0.52),
-                    )
+                    active_engine = "智能音乐" if eff_scene == "音乐" else mapped_preset
                 else:
                     effective.update(
                         vibration_threshold=max(240.0, noise_floor * 2.0),
-                        attack_rate=0.20,
-                        release_rate=0.35,
-                        dead_zone=0.02,
+                        attack_rate=0.25,
+                        release_rate=0.50,
+                        dead_zone=max(0.015, snap["dead_zone"]),
                         intensity=0.0,
                     )
+                    active_engine = "安静"
 
             adaptive_floor = noise_floor * 1.55 if effective["adaptive_threshold"] else 0.0
             threshold = max(effective["vibration_threshold"], adaptive_floor)
 
-            def calc_vib(rms_val: float, gamma_override: float | None = None, thr_override: float | None = None) -> float:
-                gm = gamma_override if gamma_override is not None else effective["gamma_correction"]
-                th = thr_override if thr_override is not None else threshold
-                mapped = map_value_gamma(rms_val, th, effective["map_in_max"], gm)
+            # 瞬态变化量映射：仅响应起音/鼓点/吐字/敲击瞬态变化，持续音 100ms 内归零绝不空转！
+            onset_thr = max(22.0, threshold * 0.25)
+            onset_span = max(300.0, effective["map_in_max"] * 0.42)
+
+            def calc_onset(on_val: float, gm: float | None = None, thr_scale: float = 1.0) -> float:
+                g = gm if gm is not None else effective["gamma_correction"]
+                mapped = map_value_gamma(on_val, onset_thr * thr_scale, onset_span, g)
                 return clamp(mapped * effective["intensity"])
 
-            is_asmr_preset = (not snap["auto_profile"]) and effective["vocal_only_mode"] and effective["gamma_correction"] < 1.20
-            is_auto_asmr = snap["auto_profile"] and detected_mode == "ASMR"
-            is_asmr_like = is_asmr_preset or is_auto_asmr
-            is_bass_immersion = (not snap["auto_profile"]) and effective["dual_motor_mode"] and effective["gamma_correction"] > 1.45
-            is_full_power = (not snap["auto_profile"]) and effective["dual_motor_mode"] and effective["gamma_correction"] <= 1.45
+            # 真实 0%~100% 线性感知增益：拉到 0% 即彻底归零对应频段，拉满 100% 火力全开！
+            punch_gain = 1.55 * (clamp(effective["rhythm_punch"]) ** 0.85)
+            tex_gain = 1.42 * (clamp(effective["texture_amount"]) ** 0.82)
 
-            # 响度平滑门控：声音极小时绝不误触发重击底震，保留丝滑微小震动；真鼓点来临时 100% 满额跟手爆发！
-            punch_gate = clamp((max(total_rms, kick_rms) - threshold * 0.82) / max(threshold * 2.3, 380.0)) ** 1.15
-
-            if snap["auto_profile"] and detected_mode == "音乐":
-                # 智能音乐：去底震留节拍！持续伴奏压至极低防嗡嗡底震，鼓点每一下干净起跳；轻音细部由右小马达细腻还原
-                steady_l = calc_vib(bass_rms, 1.72, threshold * 1.25) * 0.22
-                vocal_detail = vocal_rms * 0.78 + crisp_rms * 1.15
-                steady_r = calc_vib(vocal_detail, 1.05, threshold * 0.62) * 0.26
-                punch_l = (kick_flux * 0.92 + transient_avg * 0.30) * snap["rhythm_punch"] * snap["intensity"] * punch_gate
-                punch_r = (crisp_flux * 0.54 + transient_avg * 0.16) * snap["rhythm_punch"] * snap["intensity"] * punch_gate
-                target_left = clamp(steady_l + punch_l * 0.85)
-                target_right = clamp(steady_r + punch_r)
-            elif is_bass_immersion:
-                # 低频沉浸（音乐·鼓点）：左大马达纯粹重锤鼓点，彻底砍除持续嗡嗡底震与人声干扰！
-                steady_l = calc_vib(bass_rms, 1.75, threshold * 1.22) * 0.20
-                punch_l = (kick_flux * 0.96 + transient_avg * 0.32) * snap["rhythm_punch"] * snap["intensity"] * punch_gate
-                punch_r = crisp_flux * 0.26 * snap["rhythm_punch"] * snap["intensity"] * punch_gate
-                target_left = clamp(steady_l + punch_l * 0.92)
-                target_right = clamp(punch_r)
-            elif is_full_power:
-                # 全频强劲（游戏·影院）：安静环境零底震，轻脚步声微震，枪炮爆炸与重击双马达全功率齐震！
-                steady_l = calc_vib(max(bass_rms, total_rms * 0.85), effective["gamma_correction"], threshold * 1.05) * 0.52
-                steady_r = calc_vib(max(vocal_rms, crisp_rms * 1.25, total_rms * 0.75), 1.02, threshold * 0.72) * 0.50
-                punch_l = (kick_flux * 0.86 + transient_avg * 0.44) * snap["rhythm_punch"] * snap["intensity"] * punch_gate
-                punch_r = (crisp_flux * 0.64 + transient_avg * 0.36) * snap["rhythm_punch"] * snap["intensity"] * punch_gate
-                target_left = clamp(steady_l + punch_l * 0.88)
-                target_right = clamp(steady_r + punch_r * 0.88)
-            elif is_asmr_like:
-                # 轻柔细腻（ASMR·助眠）：左重锤静默防厚重底震，右轻马达在 1.5%~22% 丝滑呈现耳语刷麦微小震动！
-                asmr_detail = vocal_rms * 0.88 + crisp_rms * 1.25
-                base_r = calc_vib(asmr_detail, effective["gamma_correction"])
-                texture = 0.0
-                if asmr_detail > threshold:
-                    breath = clamp((asmr_detail - threshold) / max(950.0, threshold * 5.0))
-                    wave = 0.65 + 0.35 * math.sin(now * 2.0 * math.pi * 31.0)
-                    texture = breath * snap["texture_amount"] * 0.045 * wave
-                tap_spark = crisp_flux * (0.08 + 0.14 * snap["rhythm_punch"]) * snap["intensity"] * punch_gate
-                target_right = clamp(base_r + texture + tap_spark, 0.0, 0.26 if is_asmr_preset else 0.32)
-                target_left = clamp(max(0.0, target_right - 0.15) * 0.15)
-            elif effective["vocal_only_mode"]:
-                # 人声清晰（对白·播客）：右小马达干净利落跟随字句起伏，句间零底震，左重锤不抢戏！
-                v_sig = vocal_rms + crisp_rms * 0.45
-                v_out = calc_vib(v_sig, 1.05, threshold * 0.75)
-                texture = 0.0
-                if snap["texture_amount"] > 0.01 and v_sig > threshold:
-                    breath = clamp((v_sig - threshold) / max(1100.0, threshold * 4.0))
-                    wave = 0.65 + 0.35 * math.sin(now * 2.0 * math.pi * 32.0)
-                    texture = breath * snap["texture_amount"] * 0.038 * wave
-                target_right = clamp(v_out * 0.86 + texture + crisp_flux * 0.12 * snap["rhythm_punch"] * punch_gate)
-                target_left = clamp(max(0.0, v_out - 0.18) * 0.20)
+            if active_engine == "安静":
+                target_left = 0.0
+                target_right = 0.0
+            elif active_engine == "智能音乐":
+                # 智能音乐：鼓点低音左重锤 ↔ 清脆军鼓/拨弦右点射 + 左右耳空间定位
+                k_l = calc_onset(max(on_kick_l, on_bass_l * 0.85), 1.08, 1.02) * punch_gain
+                k_r = calc_onset(on_kick_r * 0.65, 1.15, 1.22) * punch_gain * 0.42
+                d_r = calc_onset(on_crisp_r * 1.35 + on_vocal_r * 0.58, 1.02, 0.92) * tex_gain * 0.82
+                d_l = calc_onset(on_crisp_l * 1.10 + on_vocal_l * 0.42, 1.12, 1.15) * tex_gain * 0.34
+                if k_l > 0.12 and on_crisp_r <= on_crisp_l * 1.35:
+                    d_r *= max(0.16, 1.0 - k_l * 1.25)
+                target_left = clamp(k_l + d_l)
+                target_right = clamp(d_r + k_r)
+            elif active_engine == "低频沉浸":
+                # 低频沉浸（音乐·鼓点）：纯粹低音炮重锤聚焦左大马达，右马达严格克制仅响应清脆军鼓瞬态！
+                b_l = calc_onset(max(on_kick_l * 1.15, on_bass_l), None, 0.96) * punch_gain * 1.06
+                b_r = calc_onset(on_kick_r * 0.85, None, 1.18) * punch_gain * 0.52
+                if on_kick_l >= on_kick_r * 0.85:
+                    b_r *= 0.18
+                snare_r = calc_onset(on_crisp_r * 1.25, 1.18, 1.25) * tex_gain * 0.65
+                target_left = clamp(b_l)
+                target_right = clamp(max(b_r, snare_r))
+            elif active_engine == "全频强劲":
+                # 全频强劲（游戏·影院）：全频段零延迟双马达冲击！左侧枪炮震左手、右侧交火震右手、正面爆炸双马达齐震！
+                low_l = calc_onset(max(on_kick_l * 1.18, on_bass_l * 1.05), None, 0.88) * punch_gain
+                low_r = calc_onset(on_kick_r * 0.92, None, 0.96) * punch_gain * 0.78
+                hi_l = calc_onset(on_crisp_l * 1.25 + on_vocal_l * 0.85, None, 0.90) * tex_gain * 0.85
+                hi_r = calc_onset(on_crisp_r * 1.38 + on_vocal_r * 0.92, None, 0.86) * tex_gain * 1.02
+                target_left = clamp(max(low_l, hi_l) + min(low_l, hi_l) * 0.35)
+                target_right = clamp(max(hi_r, low_r) + min(hi_r, low_r) * 0.35)
+            elif active_engine == "轻柔细腻":
+                # 轻柔细腻（ASMR·助眠）：3D 双耳微触发定位！左耳轻语/掏耳微震左手，右耳刷麦/敲击微震右手，白噪音 0% 静止！
+                trig_l = on_vocal_l * 0.82 + on_crisp_l * 1.45
+                trig_r = on_vocal_r * 0.82 + on_crisp_r * 1.45
+                v_l = calc_onset(trig_l, None, 0.74) * tex_gain * 0.76 + calc_onset(on_kick_l * 0.75, None, 0.95) * punch_gain * 0.55
+                v_r = calc_onset(trig_r, None, 0.74) * tex_gain * 0.80
+                if trig_r >= trig_l * 0.82 and on_kick_l <= on_kick_r * 1.25:
+                    v_l *= 0.16
+                cap_max = clamp(0.14 + 0.38 * effective["intensity"], 0.16, 0.52)
+                target_left = clamp(v_l, 0.0, cap_max * 0.90)
+                target_right = clamp(v_r, 0.0, cap_max)
+            elif active_engine == "人声清晰":
+                # 人声清晰（对白·播客）：滤除环境轰鸣与BGM低音，逐字吐字清晰点射 + 左右说话人方位跟踪！
+                voc_l = calc_onset(on_vocal_l * 1.08 + on_crisp_l * 0.62, None, 0.84) * tex_gain * 0.76
+                voc_r = calc_onset(on_vocal_r * 1.08 + on_crisp_r * 0.62, None, 0.84) * tex_gain * 0.94
+                chest_l = calc_onset(on_bass_l * 0.85, 1.15, 1.15) * punch_gain * 0.55
+                if on_vocal_r >= on_vocal_l * 0.80:
+                    voc_l *= 0.20
+                target_left = clamp(voc_l + chest_l)
+                target_right = clamp(voc_r)
             else:
-                # 自定义手动模式
-                if effective["dual_motor_mode"]:
-                    steady_l = calc_vib(bass_rms) * 0.38
-                    steady_r = calc_vib(max(vocal_rms, crisp_rms * 1.15)) * 0.38
-                else:
-                    steady_l = steady_r = calc_vib(total_rms) * 0.45
-                punch_l = (kick_flux * 0.80 + transient_avg * 0.30) * snap["rhythm_punch"] * snap["intensity"] * punch_gate
-                punch_r = crisp_flux * 0.45 * snap["rhythm_punch"] * snap["intensity"] * punch_gate
-                target_left = clamp(steady_l + punch_l * 0.75)
-                target_right = clamp(steady_r + punch_r)
+                target_left = clamp(calc_onset(on_bass_l + on_vocal_l * 0.6, None, 1.0) * punch_gain)
+                target_right = clamp(calc_onset(on_crisp_r + on_vocal_r * 0.8, None, 1.0) * tex_gain)
 
-            # 非对称包络跟踪：鼓点瞬间爆发(attack)，拍间与暂停毫秒级干净收住绝不拖泥带水！
+            # 干脆起停包络：有瞬态毫秒级弹出，瞬态一过立即高速收停，绝不拖泥带水一直转！
             if is_paused_silence:
                 target_left = 0.0
                 target_right = 0.0
-                left_rel = 0.62
-                right_rel = 0.65
+                left_rel = 0.65
+                right_rel = 0.68
             else:
-                left_rel = max(effective["release_rate"], 0.32)
-                right_rel = min(0.58, max(effective["release_rate"] * 1.18, 0.28))
-            left_vib = smooth_signal(left_vib, target_left, effective["attack_rate"], left_rel)
-            right_vib = smooth_signal(right_vib, target_right, effective["attack_rate"], right_rel)
+                left_rel = max(effective["release_rate"], 0.42)
+                right_rel = max(effective["release_rate"] * 1.18, 0.46)
+            left_vib = smooth_signal(left_vib, target_left, max(effective["attack_rate"], 0.56), left_rel)
+            right_vib = smooth_signal(right_vib, target_right, max(effective["attack_rate"], 0.60), right_rel)
 
             left_vib = apply_motor_deadzone(left_vib, effective["dead_zone"])
             right_vib = apply_motor_deadzone(right_vib, effective["dead_zone"])
@@ -1376,6 +1721,8 @@ def audio_vibration_thread(
                 shared.stats.detected_mode = detected_mode
                 shared.stats.beat_pulse = max(transient, kick_flux * 0.92)
                 shared.stats.spectrum = spectrum
+                shared.stats.spectrum_l = spectrum_l
+                shared.stats.spectrum_r = spectrum_r
                 if snap["auto_calibrating"]:
                     shared.stats.calibrating_left = max(0.0, calibration_until - now)
     except Exception as exc:
@@ -2501,21 +2848,51 @@ class ProMotionCluster(tk.Frame):
                     _user32_gdi.ReleaseDC(hwnd, hdc)
 
     @staticmethod
-    def _build_punchy_ring(count: int, band_slice: tuple | list, motor_val: float, beat: float, audio_active: float) -> tuple[list[float], float]:
+    def _build_directional_ring(
+        count: int,
+        band_primary: tuple | list,
+        band_opposite: tuple | list,
+        motor_val: float,
+        beat: float,
+        audio_active: float,
+        manual_override: bool = False,
+    ) -> tuple[list[float], float]:
+        """
+        构建同中央大盘一致的尖锐方向感频谱环（彻底移除把整圈平均撑圆的 motor_boost！）：
+        - 右半圈映射右声道峰值、左半圈映射左声道峰值，声源在哪一侧、哪个频点，就只往哪个方向尖锐弹出！
+        - 仅在点击「测试震动」按钮无音频时才生成定向测试脉冲波。
+        """
         half = count // 2
-        n_b = max(1, len(band_slice))
-        motor_boost = (clamp(motor_val) ** 0.52) if motor_val > 0.005 else 0.0
-        bars_half = []
+        n_p = max(1, len(band_primary))
+        n_o = max(1, len(band_opposite))
+
+        if manual_override and audio_active < 0.02 and motor_val > 0.02:
+            # 仅手动点击「测试震动」时显示定向扇形脉冲（非整圈平均圆球）
+            bars = []
+            for i in range(count):
+                ang = (2.0 * math.pi * i) / count
+                lobe = max(0.0, math.cos(ang * 2.0)) ** 3.0
+                bars.append(clamp(motor_val * lobe))
+            return bars, clamp(motor_val)
+
+        # 去均值尖峰提取：只保留突出的几个方向尖刺，其余角度安静归零，视觉与中央环 100% 统一！
+        avg_p = (sum(band_primary) / n_p) if band_primary else 0.0
+        avg_o = (sum(band_opposite) / n_o) if band_opposite else 0.0
+        right_half = []
+        left_half = []
+        gain = audio_active * (0.95 + 0.45 * beat)
         for i in range(half):
-            idx = int(round((i / max(1, half - 1)) * (n_b - 1)))
-            raw_b = band_slice[idx] if band_slice else 0.0
-            val = raw_b * audio_active * (0.78 + 0.55 * beat)
-            if motor_boost > 0.02:
-                ripple = 0.70 + 0.30 * abs(math.sin(i * 0.95 + motor_val * 6.0))
-                val = max(val, motor_boost * ripple)
-            bars_half.append(clamp(val))
-        bars = bars_half + bars_half[::-1]
-        peak_p = clamp(max(max(bars_half) if bars_half else 0.0, beat * 0.95, motor_boost))
+            idx_p = int(round((i / max(1, half - 1)) * (n_p - 1)))
+            idx_o = int(round((i / max(1, half - 1)) * (n_o - 1)))
+            vp = band_primary[idx_p] if band_primary else 0.0
+            vo = band_opposite[idx_o] if band_opposite else 0.0
+            sp = max(0.0, vp - avg_p * 0.55) * 1.45
+            so = max(0.0, vo - avg_o * 0.55) * 1.45
+            right_half.append(clamp((sp ** 1.35) * gain))
+            left_half.append(clamp((so ** 1.35) * gain))
+
+        bars = right_half + left_half[::-1]
+        peak_p = clamp(max(max(bars) if bars else 0.0, motor_val * 0.85))
         return bars, peak_p
 
     def run_promotion_loop(self):
@@ -2547,6 +2924,9 @@ class ProMotionCluster(tk.Frame):
                 l_out = st.left_output
                 r_out = st.right_output
                 spec = st.spectrum
+                spec_l = st.spectrum_l
+                spec_r = st.spectrum_r
+                man_ovr = st.manual_override
 
             # 当用户关闭「丝滑律动」开关或关闭总震动时：仅绘制 1 次静默暗光态，随后进入 0% CPU 休眠！
             show_active = enabled and vis_on
@@ -2618,11 +2998,23 @@ class ProMotionCluster(tk.Frame):
 
             if len(spec) < 24:
                 spec = (0.0,) * 24
-            left_bars, left_pump = self._build_punchy_ring(32, spec[:8], l_out, beat * 1.15, audio_active)
-            spec_list = list(spec)
-            audio_bars = [clamp(v * audio_active * (0.92 + 0.35 * beat)) for v in (spec_list + spec_list[::-1])]
+            if len(spec_l) < 24:
+                spec_l = spec
+            if len(spec_r) < 24:
+                spec_r = spec
+
+            # 三枚圆盘全部采用真立体声尖锐方向频谱（右半圈=右耳方位，左半圈=左耳方位，绝不平均撑成圆球！）
+            left_bars, left_pump = self._build_directional_ring(
+                32, spec_r[:10], spec_l[:10], l_out, beat * 1.15, audio_active, man_ovr
+            )
+            audio_bars = (
+                [clamp(v * audio_active * (0.95 + 0.38 * beat)) for v in spec_r]
+                + [clamp(v * audio_active * (0.95 + 0.38 * beat)) for v in reversed(spec_l)]
+            )
             audio_pump = clamp(max(beat * 0.95, (total_rms / MAX_RMS_DISPLAY) ** 0.7))
-            right_bars, right_pump = self._build_punchy_ring(32, spec[8:], r_out, beat * 0.65, audio_active)
+            right_bars, right_pump = self._build_directional_ring(
+                32, spec_r[8:], spec_l[8:], r_out, beat * 0.75, audio_active, man_ovr
+            )
 
             self.disc_left.step_physics(dt, left_bars, l_out, left_pump, True, launch_prog)
             self.disc_audio.step_physics(dt, audio_bars, total_rms, audio_pump, True, launch_prog)
@@ -2834,6 +3226,12 @@ class ModeSelector(tk.Frame):
             self._selected = name
             self._sync()
 
+    def step_auto_link(self, linked_name: str | None):
+        """智能自动静默联动指示：绝不切换任何中文字体，仅让对应预设卡片顶部的 3px 微光呼吸条柔和渐变亮起。"""
+        for name, card in self._cards.items():
+            target = 1.0 if (name != "智能自动" and name == linked_name) else 0.0
+            card.step_link_glow(target)
+
     def _sync(self):
         for name, card in self._cards.items():
             card.set_active(name == self._selected)
@@ -2855,6 +3253,7 @@ class _ModeOption(tk.Canvas):
         self.command = command
         self.active = False
         self.hover = False
+        self.link_glow = 0.0
 
         self.bind("<Configure>", lambda _e: self._redraw())
         self.bind("<Enter>", lambda _e: self._set_hover(True))
@@ -2865,6 +3264,20 @@ class _ModeOption(tk.Canvas):
         if self.active != active:
             self.active = active
             self._redraw()
+
+    def step_link_glow(self, target: float):
+        target = clamp(target)
+        if abs(self.link_glow - target) < 0.005:
+            if self.link_glow != target:
+                self.link_glow = target
+                self._redraw()
+            return
+        step = 0.11 if target > self.link_glow else -0.09
+        if abs(target - self.link_glow) <= abs(step):
+            self.link_glow = target
+        else:
+            self.link_glow = clamp(self.link_glow + step)
+        self._redraw()
 
     def _set_hover(self, hover: bool):
         self.hover = hover
@@ -2880,15 +3293,18 @@ class _ModeOption(tk.Canvas):
             title_fg = TEXT_MAIN
             sub_fg = blend_hex(TEXT_SUB, self.accent, 0.35)
             bar_col = self.accent
+            bar_ratio = 0.42
         else:
             fill = BG_CARD_HI if self.hover else BG_INSET
             stroke = BORDER_HI if self.hover else BORDER
             title_fg = TEXT_MAIN if self.hover else TEXT_SUB
             sub_fg = TEXT_MUTED
-            bar_col = blend_hex(BG_INSET, self.accent, 0.35) if self.hover else "#1e263b"
+            base_bar = blend_hex(BG_INSET, self.accent, 0.35) if self.hover else "#1e263b"
+            bar_col = blend_hex(base_bar, self.accent, 0.85 * self.link_glow) if self.link_glow > 0.0 else base_bar
+            bar_ratio = 0.22 + 0.10 * self.link_glow
 
         draw_rounded_box(self, 1, 1, w - 2, h - 2, S(12), fill=fill, outline=stroke, width=1)
-        bar_w = w * (0.42 if self.active else 0.22)
+        bar_w = w * bar_ratio
         bx1 = (w - bar_w) / 2
         draw_rounded_box(self, bx1, S(6), bx1 + bar_w, S(9), S(1.5), fill=bar_col, outline="")
 
@@ -3338,9 +3754,9 @@ class AdvancedDialog(tk.Toplevel):
         for attr, slider in self.sliders.items():
             slider.set_value(float(snap[attr]))
         if snap["auto_profile"]:
-            self.auto_hint.config(text="当前为「智能自动」，选择手动模式后以下选项生效")
+            self.auto_hint.config(text="当前为「智能自动」，已自动托管场景曲线")
         else:
-            self.auto_hint.config(text="手动模式生效中")
+            self.auto_hint.config(text=f"当前模式：{snap['selected_mode']}（修改自动保存）")
 
     def refresh_logs(self, history: list[str]):
         self.log_box.configure(state="normal")
@@ -3388,6 +3804,9 @@ class VibrationApp:
         self.vocal_var = tk.BooleanVar(value=True)
         self.adapt_var = tk.BooleanVar(value=True)
 
+        # 五种模式各自独立保存的用户参数表（初始拷贝自原厂精调预设）
+        self.mode_profiles: dict[str, dict] = {m: dict(FACTORY_PROFILES[m]) for m in MODE_NAMES}
+
         self.load_settings()
         self._build_ui()
         self.sync_ui_from_shared()
@@ -3405,26 +3824,75 @@ class VibrationApp:
             self.disc_cluster.launch_duration = duration
         self.vis_wake_event.set()
 
-    # ----- 设置读写 -----
+    # ----- 设置读写（支持 5 种模式各自独立记忆 + 跨重启持久化 + 单模式一键恢复原厂默认） -----
+
+    def _capture_active_profile(self):
+        """将当前正在运行模式的所有参数同步写入该模式专属档案槽。"""
+        snap = self.shared.snapshot(include_stats=False)
+        cur_mode = snap["selected_mode"] if snap["selected_mode"] in MODE_NAMES else "智能自动"
+        slot = self.mode_profiles.setdefault(cur_mode, dict(FACTORY_PROFILES[cur_mode]))
+        for k in PROFILE_PARAM_KEYS:
+            slot[k] = snap[k]
+        slot["auto_profile"] = cur_mode == "智能自动"
 
     def load_settings(self):
+        self.mode_profiles = {m: dict(FACTORY_PROFILES[m]) for m in MODE_NAMES}
         if not CONFIG_FILE.exists():
+            init_cfg = dict(self.mode_profiles["智能自动"])
+            init_cfg["selected_mode"] = "智能自动"
+            self.shared.apply(init_cfg)
             return
         try:
             raw = json.loads(CONFIG_FILE.read_text(encoding="utf-8"))
-            self.shared.apply(sanitize_settings(raw))
+            cleaned_top = sanitize_settings(raw)
+
+            # 1. 先恢复全局硬件开关与手柄槽位
+            global_cfg = {k: cleaned_top[k] for k in ("enabled", "visualizer_enabled", "controller_index") if k in cleaned_top}
+            self.shared.apply(global_cfg)
+
+            # 2. 确定上次选中的模式
+            sel_mode = cleaned_top.get("selected_mode")
+            if sel_mode not in MODE_NAMES:
+                if cleaned_top.get("auto_profile", True):
+                    sel_mode = "智能自动"
+                else:
+                    sel_mode = self._match_preset_name(cleaned_top) or "智能自动"
+
+            # 3. 恢复 5 种模式各自独立保存的用户微调参数
+            raw_profiles = raw.get("mode_profiles") if isinstance(raw, dict) else None
+            if isinstance(raw_profiles, dict):
+                for m in MODE_NAMES:
+                    m_raw = raw_profiles.get(m)
+                    if isinstance(m_raw, dict):
+                        m_clean = sanitize_settings(m_raw)
+                        for k in PROFILE_PARAM_KEYS:
+                            if k in m_clean:
+                                self.mode_profiles[m][k] = m_clean[k]
+                        self.mode_profiles[m]["auto_profile"] = m == "智能自动"
+
+            active_cfg = dict(self.mode_profiles[sel_mode])
+            active_cfg["auto_profile"] = sel_mode == "智能自动"
+            active_cfg["selected_mode"] = sel_mode
+            self.shared.apply(active_cfg)
         except Exception as exc:
             self.log_queue.put(f"读取配置文件失败，已使用默认设置: {exc}")
 
     def save_settings(self):
-        snap = self.shared.snapshot()
-        payload = {k: snap[k] for k in PERSISTED_KEYS}
+        self._capture_active_profile()
+        snap = self.shared.snapshot(include_stats=False)
+        payload = {"schema_version": 2}
+        for k in PERSISTED_KEYS:
+            payload[k] = snap[k]
+        payload["mode_profiles"] = {
+            m: {k: self.mode_profiles[m][k] for k in PROFILE_PARAM_KEYS}
+            for m in MODE_NAMES
+        }
         try:
             CONFIG_FILE.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
         except Exception as exc:
             self.log_queue.put(f"保存配置失败: {exc}")
 
-    def schedule_save(self):
+    def schedule_save(self, delay_ms: int = 320):
         if self.closing:
             return
         if self._save_timer is not None:
@@ -3432,7 +3900,7 @@ class VibrationApp:
                 self.master.after_cancel(self._save_timer)
             except Exception:
                 pass
-        self._save_timer = self.master.after(1200, self._commit_save)
+        self._save_timer = self.master.after(delay_ms, self._commit_save)
 
     def _commit_save(self):
         self._save_timer = None
@@ -3574,12 +4042,10 @@ class VibrationApp:
         for attr, slider in self.feel_sliders.items():
             slider.set_value(snap[attr])
 
-        if snap["auto_profile"]:
-            self.mode_selector.set_selected("智能自动")
-        else:
-            matched = self._match_preset_name(snap)
-            if matched:
-                self.mode_selector.set_selected(matched)
+        sel_mode = snap["selected_mode"] if snap["selected_mode"] in MODE_NAMES else "智能自动"
+        self.mode_selector.set_selected(sel_mode)
+        if sel_mode != "智能自动":
+            self.mode_selector.step_auto_link(None)
 
         if self.adv_dialog and self.adv_dialog.winfo_exists():
             self.adv_dialog.sync_from_snapshot(snap)
@@ -3653,43 +4119,55 @@ class VibrationApp:
         self.log_queue.put("正在重新刷新默认音频输出设备...")
 
     def on_mode_selected(self, mode_name: str):
+        if mode_name not in MODE_NAMES:
+            return
+        # 切换前先锁存旧模式的全部用户修改，再加载目标模式专属记忆参数
+        self._capture_active_profile()
+        saved_cfg = dict(self.mode_profiles[mode_name])
+        saved_cfg["auto_profile"] = mode_name == "智能自动"
+        saved_cfg["selected_mode"] = mode_name
+        self.shared.apply(saved_cfg)
+        self.sync_ui_from_shared()
         if mode_name == "智能自动":
-            auto_cfg = dict(ADVANCED_DEFAULTS)
-            auto_cfg.update(FEEL_DEFAULTS)
-            auto_cfg["auto_profile"] = True
-            self.shared.apply(auto_cfg)
-            self.sync_ui_from_shared()
-            self.log_queue.put("已启用「智能自动」模式（自动识别音乐 / ASMR / 安静场景）。")
+            self.log_queue.put("已切换至「智能自动」（自动识别 音乐 / 人声 / ASMR / 游戏影院）。")
         else:
-            preset = dict(PRESETS[mode_name])
-            preset["auto_profile"] = False
-            self.shared.apply(preset)
-            self.sync_ui_from_shared()
-            self.log_queue.put(f"已切换至「{mode_name}」预设。")
-        if self.adv_dialog and self.adv_dialog.winfo_exists():
-            self.adv_dialog.sync_from_snapshot(self.shared.snapshot())
-        self.schedule_save()
+            self.log_queue.put(f"已切换至「{mode_name}」（已加载该模式专属保存参数）。")
+        self.save_settings()
 
     def on_feel_change(self, attr: str, value: float):
+        fval = float(value)
         with self.shared.lock:
-            setattr(self.shared, attr, float(value))
+            setattr(self.shared, attr, fval)
+            cur_mode = self.shared.selected_mode
+        if cur_mode in self.mode_profiles:
+            self.mode_profiles[cur_mode][attr] = fval
         self.schedule_save()
 
     def reset_feel(self):
-        selected = self.mode_selector._selected
-        target = PRESETS[selected] if selected in PRESETS else FEEL_DEFAULTS
-        feel_vals = {k: target[k] for k in ("intensity", "rhythm_punch", "texture_amount")}
-        self.shared.apply(feel_vals)
-        for attr, val in feel_vals.items():
-            self.feel_sliders[attr].set_value(val)
-        self.log_queue.put("手感滑块已恢复当前模式默认值。")
-        self.schedule_save()
+        """恢复默认：将当前选中模式的所有调校参数完整还原为该模式的原厂初始值，不影响其他模式的自定义保存！"""
+        snap = self.shared.snapshot(include_stats=False)
+        cur_mode = snap["selected_mode"] if snap["selected_mode"] in MODE_NAMES else self.mode_selector._selected
+        if cur_mode not in FACTORY_PROFILES:
+            cur_mode = "智能自动"
+        factory = dict(FACTORY_PROFILES[cur_mode])
+        self.mode_profiles[cur_mode] = dict(factory)
+        apply_cfg = dict(factory)
+        apply_cfg["selected_mode"] = cur_mode
+        self.shared.apply(apply_cfg)
+        self.sync_ui_from_shared()
+        self.log_queue.put(f"「{cur_mode}」已恢复为原始默认参数。")
+        self.save_settings()
 
     def on_advanced_toggle(self):
         with self.shared.lock:
             self.shared.dual_motor_mode = self.dual_var.get()
             self.shared.vocal_only_mode = self.vocal_var.get()
             self.shared.adaptive_threshold = self.adapt_var.get()
+            cur_mode = self.shared.selected_mode
+        if cur_mode in self.mode_profiles:
+            self.mode_profiles[cur_mode]["dual_motor_mode"] = self.dual_var.get()
+            self.mode_profiles[cur_mode]["vocal_only_mode"] = self.vocal_var.get()
+            self.mode_profiles[cur_mode]["adaptive_threshold"] = self.adapt_var.get()
         self.schedule_save()
 
     def on_advanced_slider(self, attr: str, value: float, is_int: bool):
@@ -3700,6 +4178,13 @@ class VibrationApp:
                 self.shared.vocal_high = min(9600, val + 200)
             elif attr == "vocal_high" and val <= self.shared.vocal_low:
                 self.shared.vocal_low = max(80, val - 200)
+            cur_mode = self.shared.selected_mode
+            v_lo = self.shared.vocal_low
+            v_hi = self.shared.vocal_high
+        if cur_mode in self.mode_profiles:
+            self.mode_profiles[cur_mode][attr] = val
+            self.mode_profiles[cur_mode]["vocal_low"] = v_lo
+            self.mode_profiles[cur_mode]["vocal_high"] = v_hi
         if attr in ("vocal_low", "vocal_high") and self.adv_dialog and self.adv_dialog.winfo_exists():
             snap = self.shared.snapshot()
             self.adv_dialog.sliders["vocal_low"].set_value(snap["vocal_low"])
@@ -3707,10 +4192,16 @@ class VibrationApp:
         self.schedule_save()
 
     def reset_advanced_params(self):
-        self.shared.apply(ADVANCED_DEFAULTS)
+        snap = self.shared.snapshot(include_stats=False)
+        cur_mode = snap["selected_mode"] if snap["selected_mode"] in MODE_NAMES else "智能自动"
+        factory = FACTORY_PROFILES[cur_mode]
+        adv_reset = {k: factory[k] for k in ADVANCED_KEYS}
+        if cur_mode in self.mode_profiles:
+            self.mode_profiles[cur_mode].update(adv_reset)
+        self.shared.apply(adv_reset)
         self.sync_ui_from_shared()
-        self.log_queue.put("高级调音参数已恢复默认。")
-        self.schedule_save()
+        self.log_queue.put(f"「{cur_mode}」高级调音参数已恢复默认。")
+        self.save_settings()
 
     def start_calibration(self):
         with self.shared.lock:
@@ -3794,8 +4285,11 @@ class VibrationApp:
                 self.log_history = self.log_history[-LOG_LINE_LIMIT:]
             if self.adv_dialog and self.adv_dialog.winfo_exists():
                 self.adv_dialog.append_line(line)
-            if "校准完成" in msg and self.adv_dialog and self.adv_dialog.winfo_exists():
-                self.adv_dialog.sync_from_snapshot(self.shared.snapshot())
+            if "校准完成" in msg:
+                self._capture_active_profile()
+                self.schedule_save()
+                if self.adv_dialog and self.adv_dialog.winfo_exists():
+                    self.adv_dialog.sync_from_snapshot(self.shared.snapshot())
 
     def update_gui(self):
         if self.closing:
@@ -3874,6 +4368,17 @@ class VibrationApp:
 
         testing = self.test_thread is not None and self.test_thread.is_alive()
         self.test_btn.configure_btn("测试中…" if testing else "测试震动", enabled=not testing)
+
+        if snap["selected_mode"] == "智能自动" and enabled:
+            scene_to_card = {
+                "音乐": "低频沉浸",
+                "人声": "人声清晰",
+                "ASMR": "轻柔细腻",
+                "影院": "全频强劲",
+            }
+            self.mode_selector.step_auto_link(scene_to_card.get(stats["detected_mode"]))
+        else:
+            self.mode_selector.step_auto_link(None)
 
         self._drain_logs()
 
