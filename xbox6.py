@@ -549,6 +549,7 @@ class SharedVibrationParams:
     bass_high: int = 220
 
     # 运行时协调字段（不写入配置文件）
+    hud_mode: bool = False
     audio_left: float = 0.0
     audio_right: float = 0.0
     override_until: float = 0.0
@@ -564,6 +565,7 @@ class SharedVibrationParams:
         with self.lock:
             data = {k: getattr(self, k) for k in PERSISTED_KEYS}
             data.update(
+                hud_mode=self.hud_mode,
                 auto_calibrating=self.auto_calibrating,
                 reconnect_requested=self.reconnect_requested,
                 audio_left=self.audio_left,
@@ -809,7 +811,7 @@ def controller_io_thread(
                 )
                 # 震动值变化时以 60Hz 毫秒级立即下发；震动值恒定时每 48ms 保活刷新防被后台手柄程序覆盖；空闲(0,0)不占总线。
                 active_rumble = key[1] > 0 or key[2] > 0
-                if active_rumble and vis_wake_event is not None and shared.visualizer_enabled:
+                if active_rumble and vis_wake_event is not None and (shared.visualizer_enabled or shared.hud_mode):
                     vis_wake_event.set()
                 if key != last_sent or (active_rumble and (now - last_sent_at) >= 0.048):
                     set_vibration(controller_index, out_left, out_right)
@@ -1239,7 +1241,7 @@ def audio_vibration_thread(
             csum_r = [0.0] + np.cumsum(power_r, dtype=np.float64).tolist()
             inv_n2 = 1.0 / (n * n)
 
-            if snap["visualizer_enabled"] and snap["enabled"]:
+            if (snap["visualizer_enabled"] and snap["enabled"]) or snap["hud_mode"]:
                 bvals_l = [math.sqrt(max(0.0, csum_l[b] - csum_l[a]) * inv_n2 + 1e-12) for a, b in spec_slices]
                 bvals_r = [math.sqrt(max(0.0, csum_r[b] - csum_r[a]) * inv_n2 + 1e-12) for a, b in spec_slices]
                 cur_peak = max(max(bvals_l, default=0.0), max(bvals_r, default=0.0))
@@ -1298,7 +1300,7 @@ def audio_vibration_thread(
             # 暂停/静音急刹门限
             silence_gate = 14.0
             is_paused_silence = (not snap["auto_calibrating"]) and (raw_total_rms < silence_gate)
-            if not is_paused_silence and vis_wake_event is not None and snap["visualizer_enabled"] and snap["enabled"]:
+            if not is_paused_silence and vis_wake_event is not None and ((snap["visualizer_enabled"] and snap["enabled"]) or snap["hud_mode"]):
                 vis_wake_event.set()
 
             # 长时会话峰值自适应增益（仅补偿耳机总音量偏低，微弱声音冻结峰值绝不放大）
@@ -1954,9 +1956,50 @@ class _DEVMODEW(ctypes.Structure):
     ]
 
 
+class _POINT(ctypes.Structure):
+    _fields_ = [("x", wintypes.LONG), ("y", wintypes.LONG)]
+
+
+class _SIZE(ctypes.Structure):
+    _fields_ = [("cx", wintypes.LONG), ("cy", wintypes.LONG)]
+
+
+class _BLENDFUNCTION(ctypes.Structure):
+    _fields_ = [
+        ("BlendOp", ctypes.c_ubyte),
+        ("BlendFlags", ctypes.c_ubyte),
+        ("SourceConstantAlpha", ctypes.c_ubyte),
+        ("AlphaFormat", ctypes.c_ubyte),
+    ]
+
+
+_WNDPROC_TYPE = ctypes.WINFUNCTYPE(ctypes.c_ssize_t, wintypes.HWND, wintypes.UINT, ctypes.c_size_t, ctypes.c_ssize_t)
+
+
+class _WNDCLASSEXW(ctypes.Structure):
+    _fields_ = [
+        ("cbSize", wintypes.UINT),
+        ("style", wintypes.UINT),
+        ("lpfnWndProc", _WNDPROC_TYPE),
+        ("cbClsExtra", ctypes.c_int),
+        ("cbWndExtra", ctypes.c_int),
+        ("hInstance", wintypes.HINSTANCE),
+        ("hIcon", wintypes.HICON),
+        ("hCursor", wintypes.HANDLE),
+        ("hbrBackground", wintypes.HBRUSH),
+        ("lpszMenuName", wintypes.LPCWSTR),
+        ("lpszClassName", wintypes.LPCWSTR),
+        ("hIconSm", wintypes.HICON),
+    ]
+
+
 _user32_gdi = ctypes.windll.user32
 _gdi32_blit = ctypes.windll.gdi32
+_kernel32 = ctypes.windll.kernel32
 _dwmapi = ctypes.windll.dwmapi
+
+_kernel32.GetModuleHandleW.argtypes = [wintypes.LPCWSTR]
+_kernel32.GetModuleHandleW.restype = wintypes.HMODULE
 
 _user32_gdi.GetDC.argtypes = [wintypes.HWND]
 _user32_gdi.GetDC.restype = wintypes.HDC
@@ -1970,6 +2013,58 @@ _user32_gdi.GetMonitorInfoW.argtypes = [wintypes.HMONITOR, ctypes.c_void_p]
 _user32_gdi.GetMonitorInfoW.restype = wintypes.BOOL
 _user32_gdi.EnumDisplaySettingsW.argtypes = [wintypes.LPCWSTR, wintypes.DWORD, ctypes.c_void_p]
 _user32_gdi.EnumDisplaySettingsW.restype = wintypes.BOOL
+_user32_gdi.DefWindowProcW.argtypes = [wintypes.HWND, wintypes.UINT, ctypes.c_size_t, ctypes.c_ssize_t]
+_user32_gdi.DefWindowProcW.restype = ctypes.c_ssize_t
+_user32_gdi.RegisterClassExW.argtypes = [ctypes.POINTER(_WNDCLASSEXW)]
+_user32_gdi.RegisterClassExW.restype = wintypes.ATOM
+_user32_gdi.CreateWindowExW.argtypes = [
+    wintypes.DWORD, wintypes.LPCWSTR, wintypes.LPCWSTR, wintypes.DWORD,
+    ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int,
+    wintypes.HWND, wintypes.HMENU, wintypes.HINSTANCE, wintypes.LPVOID,
+]
+_user32_gdi.CreateWindowExW.restype = wintypes.HWND
+_user32_gdi.DestroyWindow.argtypes = [wintypes.HWND]
+_user32_gdi.DestroyWindow.restype = wintypes.BOOL
+_user32_gdi.ShowWindow.argtypes = [wintypes.HWND, ctypes.c_int]
+_user32_gdi.ShowWindow.restype = wintypes.BOOL
+_user32_gdi.SetWindowPos.argtypes = [wintypes.HWND, wintypes.HWND, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int, wintypes.UINT]
+_user32_gdi.SetWindowPos.restype = wintypes.BOOL
+_user32_gdi.UpdateLayeredWindow.argtypes = [
+    wintypes.HWND, wintypes.HDC, ctypes.POINTER(_POINT), ctypes.POINTER(_SIZE),
+    wintypes.HDC, ctypes.POINTER(_POINT), wintypes.DWORD, ctypes.POINTER(_BLENDFUNCTION), wintypes.DWORD,
+]
+_user32_gdi.UpdateLayeredWindow.restype = wintypes.BOOL
+_user32_gdi.GetCursorPos.argtypes = [ctypes.POINTER(_POINT)]
+_user32_gdi.GetCursorPos.restype = wintypes.BOOL
+_user32_gdi.SetCapture.argtypes = [wintypes.HWND]
+_user32_gdi.SetCapture.restype = wintypes.HWND
+_user32_gdi.ReleaseCapture.argtypes = []
+_user32_gdi.ReleaseCapture.restype = wintypes.BOOL
+_user32_gdi.LoadCursorW.argtypes = [wintypes.HINSTANCE, ctypes.c_void_p]
+_user32_gdi.LoadCursorW.restype = wintypes.HANDLE
+_user32_gdi.SetCursor.argtypes = [wintypes.HANDLE]
+_user32_gdi.SetCursor.restype = wintypes.HANDLE
+_user32_gdi.GetSystemMetrics.argtypes = [ctypes.c_int]
+_user32_gdi.GetSystemMetrics.restype = ctypes.c_int
+_user32_gdi.PeekMessageW.argtypes = [ctypes.POINTER(wintypes.MSG), wintypes.HWND, wintypes.UINT, wintypes.UINT, wintypes.UINT]
+_user32_gdi.PeekMessageW.restype = wintypes.BOOL
+_user32_gdi.TranslateMessage.argtypes = [ctypes.POINTER(wintypes.MSG)]
+_user32_gdi.TranslateMessage.restype = wintypes.BOOL
+_user32_gdi.DispatchMessageW.argtypes = [ctypes.POINTER(wintypes.MSG)]
+_user32_gdi.DispatchMessageW.restype = ctypes.c_ssize_t
+_user32_gdi.GetMessagePos.argtypes = []
+_user32_gdi.GetMessagePos.restype = wintypes.DWORD
+_user32_gdi.GetDoubleClickTime.argtypes = []
+_user32_gdi.GetDoubleClickTime.restype = wintypes.UINT
+_user32_gdi.MsgWaitForMultipleObjects.argtypes = [wintypes.DWORD, ctypes.c_void_p, wintypes.BOOL, wintypes.DWORD, wintypes.DWORD]
+_user32_gdi.MsgWaitForMultipleObjects.restype = wintypes.DWORD
+
+try:
+    _imm32 = ctypes.windll.imm32
+    _imm32.ImmAssociateContext.argtypes = [wintypes.HWND, wintypes.HANDLE]
+    _imm32.ImmAssociateContext.restype = wintypes.HANDLE
+except Exception:
+    _imm32 = None
 
 _gdi32_blit.SetDIBitsToDevice.argtypes = [
     wintypes.HDC,
@@ -1986,6 +2081,18 @@ _gdi32_blit.SetDIBitsToDevice.argtypes = [
     wintypes.UINT,
 ]
 _gdi32_blit.SetDIBitsToDevice.restype = ctypes.c_int
+_gdi32_blit.CreateCompatibleDC.argtypes = [wintypes.HDC]
+_gdi32_blit.CreateCompatibleDC.restype = wintypes.HDC
+_gdi32_blit.CreateDIBSection.argtypes = [
+    wintypes.HDC, ctypes.c_void_p, wintypes.UINT, ctypes.POINTER(ctypes.c_void_p), wintypes.HANDLE, wintypes.DWORD,
+]
+_gdi32_blit.CreateDIBSection.restype = wintypes.HBITMAP
+_gdi32_blit.SelectObject.argtypes = [wintypes.HDC, ctypes.c_void_p]
+_gdi32_blit.SelectObject.restype = ctypes.c_void_p
+_gdi32_blit.DeleteObject.argtypes = [ctypes.c_void_p]
+_gdi32_blit.DeleteObject.restype = wintypes.BOOL
+_gdi32_blit.DeleteDC.argtypes = [wintypes.HDC]
+_gdi32_blit.DeleteDC.restype = wintypes.BOOL
 
 
 def get_window_refresh_hz(hwnd: int) -> int:
@@ -2020,6 +2127,312 @@ def _pil_bgra_to_u32(img_rgba: Image.Image) -> np.ndarray:
     """将标准 RGBA PIL 图像转换为预交换 BGRA 的 (H, W) uint32 数组。"""
     bgra = _rgba_to_bgra(img_rgba)
     return np.frombuffer(bgra.tobytes(), dtype=np.uint32).reshape((img_rgba.height, img_rgba.width)).copy()
+
+
+def _pil_rgba_to_premul_u32(img_rgba: Image.Image) -> tuple[np.ndarray, np.ndarray]:
+    """将标准 RGBA PIL 图像转换为 Win32 UpdateLayeredWindow 专用的预乘 Alpha BGRA uint32 数组与 Alpha 通道。"""
+    arr = np.frombuffer(img_rgba.tobytes(), dtype=np.uint8).reshape((img_rgba.height, img_rgba.width, 4))
+    a = arr[:, :, 3].astype(np.uint32)
+    r_p = np.minimum(a, (arr[:, :, 0].astype(np.uint32) * a + 127) // 255)
+    g_p = np.minimum(a, (arr[:, :, 1].astype(np.uint32) * a + 127) // 255)
+    b_p = np.minimum(a, (arr[:, :, 2].astype(np.uint32) * a + 127) // 255)
+    packed = (a << 24) | (r_p << 16) | (g_p << 8) | b_p
+    return packed, arr[:, :, 3]
+
+
+def clamp_to_virtual_screen(x: int, y: int, w: int, h: int) -> tuple[int, int]:
+    vx = _user32_gdi.GetSystemMetrics(76)   # SM_XVIRTUALSCREEN
+    vy = _user32_gdi.GetSystemMetrics(77)   # SM_YVIRTUALSCREEN
+    vw = _user32_gdi.GetSystemMetrics(78)   # SM_CXVIRTUALSCREEN
+    vh = _user32_gdi.GetSystemMetrics(79)   # SM_CYVIRTUALSCREEN
+    if vw <= 0 or vh <= 0:
+        return x, y
+    nx = max(vx - w // 3, min(vx + vw - (w * 2) // 3, int(x)))
+    ny = max(vy - h // 4, min(vy + vh - (h * 3) // 4, int(y)))
+    return nx, ny
+
+
+class FloatingPulseHUD:
+    """
+    原生 Win32 逐像素预乘 Alpha 硬件分层悬浮窗（UpdateLayeredWindow + DWM 合成）：
+    - 窗口创建、消息泵、拖拽移动与 130Hz UpdateLayeredWindow 100% 运行在同一独立线程，彻底杜绝跨线程死锁与 Tcl/GIL 冲突
+    - 256 级真透明抗锯齿发光边缘，Alpha == 0 空白区域系统内核级鼠标直接穿透
+    - 圆盘区域支持丝滑左键拖拽移动、防手抖双击瞬间还原主界面、空格开关震动
+    """
+
+    _CLS_ID_SEQ = 0
+
+    def __init__(
+        self,
+        width: int,
+        height: int,
+        event_queue: queue.SimpleQueue,
+        hit_discs: tuple[tuple[float, float, float], ...] = (),
+    ):
+        self.w = int(width)
+        self.h = int(height)
+        self.event_queue = event_queue
+        self._hit_discs_r2 = tuple((float(cx), float(cy), float(r * 1.03) ** 2) for cx, cy, r in hit_discs)
+
+        self.x = 120
+        self.y = 120
+        self._pressing = False
+        self._dragging = False
+        self._pos_dirty = False
+        self._drag_pt0 = (0, 0)
+        self._win_pt0 = (0, 0)
+        self._last_down_t = 0.0
+        self._last_down_pt = (-9999, -9999)
+        self._last_click_dragged = False
+
+        self._cur_hand = _user32_gdi.LoadCursorW(None, ctypes.c_void_p(32649))     # IDC_HAND
+        self._cur_move = _user32_gdi.LoadCursorW(None, ctypes.c_void_p(32646))     # IDC_SIZEALL
+
+        self._wndproc_ref = _WNDPROC_TYPE(self._wnd_proc)
+        FloatingPulseHUD._CLS_ID_SEQ += 1
+        self._cls_name = f"XboxPulseHUDCls_{FloatingPulseHUD._CLS_ID_SEQ}_{id(self)}"
+        hinst = _kernel32.GetModuleHandleW(None)
+
+        hicon = None
+        if ICON_FILE.exists():
+            try:
+                _user32_gdi.LoadImageW.argtypes = [wintypes.HINSTANCE, wintypes.LPCWSTR, wintypes.UINT, ctypes.c_int, ctypes.c_int, wintypes.UINT]
+                _user32_gdi.LoadImageW.restype = wintypes.HANDLE
+                hicon = _user32_gdi.LoadImageW(None, str(ICON_FILE), 1, 0, 0, 0x0010)
+            except Exception:
+                hicon = None
+
+        wc = _WNDCLASSEXW()
+        wc.cbSize = ctypes.sizeof(_WNDCLASSEXW)
+        wc.style = 0x0008  # CS_DBLCLKS
+        wc.lpfnWndProc = self._wndproc_ref
+        wc.cbClsExtra = 0
+        wc.cbWndExtra = 0
+        wc.hInstance = hinst
+        wc.hIcon = hicon
+        wc.hCursor = self._cur_hand
+        wc.hbrBackground = None
+        wc.lpszMenuName = None
+        wc.lpszClassName = self._cls_name
+        wc.hIconSm = hicon
+        _user32_gdi.RegisterClassExW(ctypes.byref(wc))
+
+        # WS_EX_LAYERED (0x80000) | WS_EX_TOPMOST (0x8) | WS_EX_APPWINDOW (0x40000)
+        ex_style = 0x00080000 | 0x00000008 | 0x00040000
+        ws_popup = 0x80000000
+        self.hwnd = int(
+            _user32_gdi.CreateWindowExW(
+                ex_style,
+                self._cls_name,
+                APP_TITLE,
+                ws_popup,
+                self.x,
+                self.y,
+                self.w,
+                self.h,
+                None,
+                None,
+                hinst,
+                None,
+            )
+            or 0
+        )
+        if self.hwnd and _imm32 is not None:
+            try:
+                _imm32.ImmAssociateContext(self.hwnd, None)
+            except Exception:
+                pass
+
+        bmi = _BITMAPINFOHEADER(
+            biSize=ctypes.sizeof(_BITMAPINFOHEADER),
+            biWidth=self.w,
+            biHeight=-self.h,
+            biPlanes=1,
+            biBitCount=32,
+            biCompression=0,
+        )
+        self.mem_dc = _gdi32_blit.CreateCompatibleDC(None)
+        bits_ptr = ctypes.c_void_p()
+        self.dib_hbmp = _gdi32_blit.CreateDIBSection(self.mem_dc, ctypes.byref(bmi), 0, ctypes.byref(bits_ptr), None, 0)
+        self._old_bmp = _gdi32_blit.SelectObject(self.mem_dc, self.dib_hbmp)
+
+        arr_t = ctypes.c_uint32 * (self.w * self.h)
+        self.dib_flat = np.frombuffer(arr_t.from_address(bits_ptr.value), dtype=np.uint32)
+        self.dib_u32 = self.dib_flat.reshape((self.h, self.w))
+        self.dib_flat.fill(0)
+
+        self._sz = _SIZE(self.w, self.h)
+        self._pt_zero = _POINT(0, 0)
+        self._blend = _BLENDFUNCTION(0, 0, 255, 1)  # AC_SRC_OVER=0, SourceConstantAlpha=255, AC_SRC_ALPHA=1
+        self._msg_buf = wintypes.MSG()
+        self.visible = False
+
+    @property
+    def is_interacting(self) -> bool:
+        return self._pressing or self._dragging
+
+    def pump_messages(self):
+        """在所属渲染线程泵送全部挂起 Win32 鼠标/键盘消息，并合并提交拖拽位移。"""
+        if not self.hwnd:
+            return
+        msg = self._msg_buf
+        while _user32_gdi.PeekMessageW(ctypes.byref(msg), None, 0, 0, 1):
+            if msg.message == 0x0012:  # WM_QUIT
+                break
+            _user32_gdi.TranslateMessage(ctypes.byref(msg))
+            _user32_gdi.DispatchMessageW(ctypes.byref(msg))
+        if self._pos_dirty and self.visible and self.hwnd and _user32_gdi.IsWindow(self.hwnd):
+            self._pos_dirty = False
+            _user32_gdi.SetWindowPos(self.hwnd, wintypes.HWND(-1), self.x, self.y, 0, 0, 0x0001 | 0x0010)
+
+    def show_at(self, x: int, y: int):
+        if not self.hwnd or not _user32_gdi.IsWindow(self.hwnd):
+            return
+        nx, ny = clamp_to_virtual_screen(x, y, self.w, self.h)
+        self.x, self.y = nx, ny
+        self._pressing = False
+        self._dragging = False
+        self._pos_dirty = False
+        self._last_down_t = 0.0
+        pt_dst = _POINT(nx, ny)
+        _user32_gdi.UpdateLayeredWindow(
+            self.hwnd, None, ctypes.byref(pt_dst), ctypes.byref(self._sz),
+            self.mem_dc, ctypes.byref(self._pt_zero), 0, ctypes.byref(self._blend), 0x00000002,
+        )
+        _user32_gdi.SetWindowPos(self.hwnd, wintypes.HWND(-1), nx, ny, self.w, self.h, 0x0010 | 0x0040)
+        _user32_gdi.ShowWindow(self.hwnd, 8)  # SW_SHOWNA
+        self.visible = True
+
+    def hide(self):
+        if self._pressing:
+            try:
+                _user32_gdi.ReleaseCapture()
+            except Exception:
+                pass
+        if self.hwnd and _user32_gdi.IsWindow(self.hwnd):
+            _user32_gdi.ShowWindow(self.hwnd, 0)  # SW_HIDE
+        self.visible = False
+        self._pressing = False
+        self._dragging = False
+        self._pos_dirty = False
+
+    def present(self):
+        """在窗口所属线程提交最新预乘 Alpha 像素与最新坐标，实现高刷渲染与拖拽完全同线程零锁同步。"""
+        if not self.visible or not self.hwnd or not _user32_gdi.IsWindow(self.hwnd):
+            return
+        if self._pos_dirty:
+            self._pos_dirty = False
+            pt_dst = _POINT(self.x, self.y)
+            _user32_gdi.UpdateLayeredWindow(
+                self.hwnd, None, ctypes.byref(pt_dst), ctypes.byref(self._sz),
+                self.mem_dc, ctypes.byref(self._pt_zero), 0, ctypes.byref(self._blend), 0x00000002,
+            )
+        else:
+            _user32_gdi.UpdateLayeredWindow(
+                self.hwnd, None, None, ctypes.byref(self._sz),
+                self.mem_dc, ctypes.byref(self._pt_zero), 0, ctypes.byref(self._blend), 0x00000002,
+            )
+
+    def destroy(self):
+        self.visible = False
+        if self.hwnd and _user32_gdi.IsWindow(self.hwnd):
+            _user32_gdi.DestroyWindow(self.hwnd)
+        self.hwnd = 0
+        if getattr(self, "mem_dc", None):
+            if getattr(self, "_old_bmp", None):
+                _gdi32_blit.SelectObject(self.mem_dc, self._old_bmp)
+                self._old_bmp = None
+            if getattr(self, "dib_hbmp", None):
+                _gdi32_blit.DeleteObject(self.dib_hbmp)
+                self.dib_hbmp = None
+            _gdi32_blit.DeleteDC(self.mem_dc)
+            self.mem_dc = None
+
+    def _trigger_restore(self):
+        if not self.visible:
+            return
+        self._last_down_t = 0.0
+        self.hide()
+        self.event_queue.put(("restore",))
+
+    @staticmethod
+    def _msg_screen_pt() -> tuple[int, int]:
+        mp = int(_user32_gdi.GetMessagePos())
+        return ctypes.c_short(mp & 0xFFFF).value, ctypes.c_short((mp >> 16) & 0xFFFF).value
+
+    def _wnd_proc(self, hwnd, msg, wparam, lparam):
+        try:
+            if msg == 0x0084 and self._hit_discs_r2:  # WM_NCHITTEST：环间飞行的流光能量粒子同样 100% 鼠标穿透屏幕！
+                sx = ctypes.c_short(lparam & 0xFFFF).value
+                sy = ctypes.c_short((lparam >> 16) & 0xFFFF).value
+                lx = sx - self.x
+                ly = sy - self.y
+                for dcx, dcy, dr2 in self._hit_discs_r2:
+                    if (lx - dcx) * (lx - dcx) + (ly - dcy) * (ly - dcy) <= dr2:
+                        return 1  # HTCLIENT
+                return -1  # HTTRANSPARENT
+            if msg == 0x0020:  # WM_SETCURSOR
+                _user32_gdi.SetCursor(self._cur_move if self._dragging else self._cur_hand)
+                return 1
+            if msg == 0x0201:  # WM_LBUTTONDOWN
+                mx, my = self._msg_screen_pt()
+                now_t = time.monotonic()
+                dbl_window = max(0.28, min(0.75, _user32_gdi.GetDoubleClickTime() / 1000.0))
+                dbl_slop = max(12.0, 14.0 * UI_SCALE)
+                if (
+                    (not self._last_click_dragged)
+                    and (now_t - self._last_down_t) <= dbl_window
+                    and math.hypot(mx - self._last_down_pt[0], my - self._last_down_pt[1]) <= dbl_slop
+                ):
+                    self._trigger_restore()
+                    return 0
+                self._last_down_t = now_t
+                self._last_down_pt = (mx, my)
+                self._last_click_dragged = False
+                self._pressing = True
+                self._dragging = False
+                self._drag_pt0 = (mx, my)
+                self._win_pt0 = (self.x, self.y)
+                _user32_gdi.SetCapture(hwnd)
+                return 0
+            if msg == 0x0200:  # WM_MOUSEMOVE
+                if self._pressing:
+                    mx, my = self._msg_screen_pt()
+                    dx = mx - self._drag_pt0[0]
+                    dy = my - self._drag_pt0[1]
+                    if self._dragging or (dx * dx + dy * dy) >= 25:
+                        self._dragging = True
+                        self._last_click_dragged = True
+                        _user32_gdi.SetCursor(self._cur_move)
+                        self.x = self._win_pt0[0] + dx
+                        self.y = self._win_pt0[1] + dy
+                        self._pos_dirty = True
+                return 0
+            if msg == 0x0202:  # WM_LBUTTONUP
+                if self._pressing:
+                    was_drag = self._dragging
+                    self._pressing = False
+                    self._dragging = False
+                    _user32_gdi.ReleaseCapture()
+                    if was_drag:
+                        self.event_queue.put(("moved", self.x, self.y))
+                return 0
+            if msg == 0x0203:  # WM_LBUTTONDBLCLK
+                self._trigger_restore()
+                return 0
+            if msg == 0x0100:  # WM_KEYDOWN
+                if wparam == 0x1B:  # VK_ESCAPE
+                    self._trigger_restore()
+                    return 0
+                if wparam == 0x20:  # VK_SPACE
+                    self.event_queue.put(("space",))
+                    return 0
+            if msg == 0x0010:  # WM_CLOSE
+                self.event_queue.put(("close",))
+                return 0
+        except Exception:
+            pass
+        return _user32_gdi.DefWindowProcW(hwnd, msg, wparam, lparam)
 
 
 class _DiscUnit:
@@ -2148,8 +2561,8 @@ class _DiscUnit:
             pts.append((mx + r * math.cos(c_a - hw), my + r * math.sin(c_a - hw)))
         return pts
 
-    def bake_into(self, base_rgb_f32: np.ndarray, idle_flat_u32: np.ndarray):
-        """向量化亚像素解析 SDF 烘焙 80 级丝滑音柱 + 0.5px 亚像素小帽 + 72 细分角度顺时针风扇转子。"""
+    def bake_into(self, base_rgb_f32: np.ndarray, idle_flat_u32: np.ndarray, hud_idle_flat_u32: np.ndarray):
+        """向量化亚像素解析 SDF 烘焙 80 级丝滑音柱 + 0.5px 亚像素小帽 + 72 细分角度顺时针风扇转子（同时烘焙主界面版与真透明悬浮版）。"""
         ss = 2 if UI_SCALE >= 1.25 else 3
         w, h = self._sw, self._sh
         cx, cy, R = self.cx, self.cy, self._R
@@ -2157,7 +2570,7 @@ class _DiscUnit:
         base_hw, cap_thick = self._base_hw, self._cap_thick
         pad_c = 4
 
-        # 仅在当前圆盘局部外接矩形内构建坐标网格，极速完成 80 级 SDF 向量化烘焙（< 25ms/盘）
+        # 仅在当前圆盘局部外接矩形内构建坐标网格，极速完成 SDF 向量化烘焙
         margin = int(math.ceil(R + 10.0 * UI_SCALE))
         x0_box = max(0, int(math.floor(cx)) - margin)
         x1_box = min(w, int(math.ceil(cx)) + margin)
@@ -2173,6 +2586,10 @@ class _DiscUnit:
         half_sec = (math.pi / self.bar_count) * 1.42
         global_idx_grid = yy * w + xx
 
+        # 悬浮透明底图仅在盘心环内设置 Alpha=1(光学无色且边缘完全藏于发光圆环内，网页白底零色差，环外空白 100% 穿透屏幕！)
+        hit_y, hit_x = np.nonzero(rad <= r_core)
+        hud_idle_flat_u32[global_idx_grid[hit_y, hit_x]] = np.uint32(0x01000000)
+
         vals = np.linspace(0.0, 1.0, self._BAR_STEPS + 1, dtype=np.float32)
         lengths = (max_len * (0.035 + 0.965 * vals))[:, None]
         hw_outs = (base_hw * (1.0 + 0.45 * vals))[:, None]
@@ -2181,6 +2598,7 @@ class _DiscUnit:
         glow_ext = np.float32(1.8 * UI_SCALE)
 
         self._bar_u32_table: list[list[tuple[np.ndarray, np.ndarray] | None]] = [[None] for _ in range(self.bar_count)]
+        self._hud_bar_u32_table: list[list[tuple[np.ndarray, np.ndarray] | None]] = [[None] for _ in range(self.bar_count)]
 
         for i in range(self.bar_count):
             ux, uy = self._dirs[i]
@@ -2188,6 +2606,7 @@ class _DiscUnit:
             adiff = np.abs(((ang - b_ang + math.pi) % (2.0 * math.pi)) - math.pi)
             loc_y, loc_x = np.nonzero(ring_mask & (adiff <= half_sec))
             cand = global_idx_grid[loc_y, loc_x].astype(np.intp)
+            min_hud_a = np.where(rad[loc_y, loc_x] <= r_core, np.uint32(1), np.uint32(0))[None, :]
 
             px = (xx[loc_y, loc_x] + 0.5 - (cx + r_start * ux)).astype(np.float32)
             py = (yy[loc_y, loc_x] + 0.5 - (cy + r_start * uy)).astype(np.float32)
@@ -2222,15 +2641,27 @@ class _DiscUnit:
             b_u = np.rint(rgb_out[:, :, 2]).astype(np.uint32)
             packed = 0xFF000000 | (r_u << 16) | (g_u << 8) | b_u
 
+            # 真透明悬浮版预乘 Alpha 合成（背景纯透明 0，柔和发光无黑边）
+            a_tot = cov + glow_a * (1.0 - cov)
+            rgb_pre = bright_cols[:, None, :] * cov[:, :, None] + (base_col[None, None, :] * glow_a[:, :, None]) * (1.0 - cov[:, :, None])
+            a_hu = np.maximum(min_hud_a, np.clip(np.rint(a_tot * 255.0), 0.0, 255.0).astype(np.uint32))
+            r_hu = np.minimum(a_hu, np.clip(np.rint(rgb_pre[:, :, 0] * 255.0 / 255.0), 0.0, 255.0).astype(np.uint32))
+            g_hu = np.minimum(a_hu, np.clip(np.rint(rgb_pre[:, :, 1] * 255.0 / 255.0), 0.0, 255.0).astype(np.uint32))
+            b_hu = np.minimum(a_hu, np.clip(np.rint(rgb_pre[:, :, 2] * 255.0 / 255.0), 0.0, 255.0).astype(np.uint32))
+            packed_hud = (a_hu << 24) | (r_hu << 16) | (g_hu << 8) | b_hu
+
             # step=0 直接写入全局默认底图
             s0_mask = cov[0] > 0.004
             idle_flat_u32[cand[s0_mask]] = packed[0, s0_mask]
+            hud_idle_flat_u32[cand[s0_mask]] = packed_hud[0, s0_mask]
 
             for step in range(1, self._BAR_STEPS + 1):
                 vis_m = (cov[step] > 0.004) | (glow_a[step] > 0.004) | s0_mask
-                self._bar_u32_table[i].append((cand[vis_m], packed[step, vis_m].copy()))
+                c_idx = cand[vis_m]
+                self._bar_u32_table[i].append((c_idx, packed[step, vis_m].copy()))
+                self._hud_bar_u32_table[i].append((c_idx, packed_hud[step, vis_m].copy()))
 
-        # 2. 预烘焙 2x2 半像素 (0.5px) 亚像素抛飞小帽表（高刷慢速抛物线顶点零跳格！）
+        # 2. 预烘焙 2x2 半像素 (0.5px) 亚像素抛飞小帽表（含主界面版与透明悬浮预乘版）
         cap_box = max(10, int(math.ceil((base_hw * 1.6 + cap_thick) * 2.0)) + 6)
         if cap_box % 2 == 1:
             cap_box += 1
@@ -2240,10 +2671,12 @@ class _DiscUnit:
         hl_cap = float(cap_thick * 0.5)
         cap_hw = float(base_hw * 1.38)
         self._cap_sub_sparse: list[list[tuple[np.ndarray, np.ndarray]]] = []
+        self._hud_cap_sub_sparse: list[list[tuple[np.ndarray, np.ndarray]]] = []
         for i in range(self.bar_count):
             ux, uy = self._dirs[i]
             cap_col = np.array(_lerp_rgb(self._bar_colors[i], (255, 255, 255), 0.72), dtype=np.float32)
             subs = []
+            hud_subs = []
             for qy in (0.0, 0.5):
                 for qx in (0.0, 0.5):
                     mcx = self._cap_half + qx
@@ -2265,12 +2698,23 @@ class _DiscUnit:
                         | (np.rint(rgb_c[:, 1]).astype(np.uint32) << 8)
                         | np.rint(rgb_c[:, 2]).astype(np.uint32)
                     )
+                    ca_hu = np.clip(np.rint(ca[ys, xs] * 255.0), 1.0, 255.0).astype(np.uint32)
+                    rgb_cp = cap_col[None, :] * a_sel
+                    cu32_hud = (
+                        (ca_hu << 24)
+                        | (np.minimum(ca_hu, np.rint(rgb_cp[:, 0]).astype(np.uint32)) << 16)
+                        | (np.minimum(ca_hu, np.rint(rgb_cp[:, 1]).astype(np.uint32)) << 8)
+                        | np.minimum(ca_hu, np.rint(rgb_cp[:, 2]).astype(np.uint32))
+                    )
                     rel_off = ((ys - self._cap_half) * w + (xs - self._cap_half)).astype(np.intp)
                     subs.append((rel_off, cu32))
+                    hud_subs.append((rel_off, cu32_hud))
             self._cap_sub_sparse.append(subs)
+            self._hud_cap_sub_sparse.append(hud_subs)
 
-        # 3. 节拍冲击波光环精灵
+        # 3. 节拍冲击波光环精灵（含透明悬浮稀疏预乘叠加表）
         self._shock_stamps: list[tuple[int, int, Image.Image] | None] = [None]
+        self._hud_shock_sparse: list[tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray] | None] = [None]
         for sk in range(1, 9):
             cp = sk / 8.0
             r_sh = r_core + (4.0 + 5.0 * cp) * UI_SCALE
@@ -2282,10 +2726,24 @@ class _DiscUnit:
                 outline=(*self.glow_rgb, int(85 * cp)),
                 width=max(2, int(round(1.6 * UI_SCALE * ss))),
             )
-            sh_1x = _rgba_to_bgra(sh_hi.resize((sh_sz, sh_sz), Image.Resampling.LANCZOS))
-            self._shock_stamps.append((int(round(cx)) - sh_rad, int(round(cy)) - sh_rad, sh_1x))
+            sh_rgba_1x = sh_hi.resize((sh_sz, sh_sz), Image.Resampling.LANCZOS)
+            sx_sh = int(round(cx)) - sh_rad
+            sy_sh = int(round(cy)) - sh_rad
+            self._shock_stamps.append((sx_sh, sy_sh, _rgba_to_bgra(sh_rgba_1x)))
 
-        # 4. 盘心腔体稀疏 uint32 直写表（零 PIL alpha_composite 开销！）+ 连续 SDF 声波 / 顺时针风扇转子
+            sh_arr = np.frombuffer(sh_rgba_1x.tobytes(), dtype=np.uint8).reshape((sh_sz, sh_sz, 4))
+            sy_m, sx_m = np.nonzero(sh_arr[:, :, 3] > 3)
+            gy_m = sy_sh + sy_m
+            gx_m = sx_sh + sx_m
+            valid_m = (gy_m >= 0) & (gy_m < h) & (gx_m >= 0) & (gx_m < w)
+            sy_m, sx_m, gy_m, gx_m = sy_m[valid_m], sx_m[valid_m], gy_m[valid_m], gx_m[valid_m]
+            sa = sh_arr[sy_m, sx_m, 3].astype(np.uint32)
+            sr = (sh_arr[sy_m, sx_m, 0].astype(np.uint32) * sa + 127) // 255
+            sg = (sh_arr[sy_m, sx_m, 1].astype(np.uint32) * sa + 127) // 255
+            sb = (sh_arr[sy_m, sx_m, 2].astype(np.uint32) * sa + 127) // 255
+            self._hud_shock_sparse.append(((gy_m * w + gx_m).astype(np.intp), sr, sg, sb, sa, 255 - sa))
+
+        # 4. 盘心腔体稀疏 uint32 直写表（透明悬浮版彻底去掉深色圆底填充，100% 通透穿透屏幕！）
         shell_rad = int(math.ceil(r_core)) + 4
         shell_sz = shell_rad * 2
         sx0_sh = int(round(cx)) - shell_rad
@@ -2299,14 +2757,24 @@ class _DiscUnit:
         )
         sh_yy, sh_xx = np.mgrid[sy0_sh : sy0_sh + shell_sz, sx0_sh : sx0_sh + shell_sz]
         sh_global_idx = (sh_yy * w + sh_xx).astype(np.intp)
+        sh_in_hit = ((sh_xx + 0.5 - cx) ** 2 + (sh_yy + 0.5 - cy) ** 2) <= (r_core ** 2)
         self._core_shells_u32: list[tuple[np.ndarray, np.ndarray]] = []
+        self._hud_core_shells_u32: list[tuple[np.ndarray, np.ndarray]] = []
 
-        def bake_shell_sparse(hi_img: Image.Image):
-            s1x = hi_img.resize((shell_sz, shell_sz), Image.Resampling.LANCZOS)
+        def bake_shell_sparse(hi_opaque: Image.Image, hi_hud: Image.Image):
+            s1x = hi_opaque.resize((shell_sz, shell_sz), Image.Resampling.LANCZOS)
             a_ch = np.array(s1x.getchannel("A"), dtype=np.uint8)
             ym, xm = np.nonzero(a_ch > 4)
             comp = _pil_bgra_to_u32(Image.alpha_composite(sh_bg_crop, s1x))
             self._core_shells_u32.append((sh_global_idx[ym, xm].copy(), comp[ym, xm].copy()))
+
+            h1x = hi_hud.resize((shell_sz, shell_sz), Image.Resampling.LANCZOS)
+            pre_u32, ha_ch = _pil_rgba_to_premul_u32(h1x)
+            hym, hxm = np.nonzero(ha_ch > 3)
+            vals_h = pre_u32[hym, hxm].copy()
+            in_h = sh_in_hit[hym, hxm]
+            vals_h[in_h & ((vals_h >> 24) == 0)] = np.uint32(0x01000000)
+            self._hud_core_shells_u32.append((sh_global_idx[hym, hxm].copy(), vals_h))
 
         if self.role == "audio":
             for pk_i in range(13):
@@ -2320,7 +2788,12 @@ class _DiscUnit:
                 c0, c1 = (shell_rad - r_core) * ss, (shell_rad + r_core) * ss
                 hd.ellipse((c0, c0, c1, c1), fill=(10, 14, 24, 248))
                 hd.ellipse((c0, c0, c1, c1), outline=(*rim_col, rim_alpha), width=rim_w)
-                bake_shell_sparse(hi)
+
+                hi_hud = Image.new("RGBA", (shell_sz * ss, shell_sz * ss), (0, 0, 0, 0))
+                hd_h = ImageDraw.Draw(hi_hud, "RGBA")
+                hd_h.ellipse((c0 - ss, c0 - ss, c1 + ss, c1 + ss), outline=(4, 8, 16, 76), width=rim_w + 2 * ss)
+                hd_h.ellipse((c0, c0, c1, c1), outline=(*rim_col, min(255, rim_alpha + 25)), width=rim_w)
+                bake_shell_sparse(hi, hi_hud)
 
             # 实时连续亚像素 SDF 双层声波网格（零相位量化、零振幅阶梯）
             span = r_core * 0.80
@@ -2345,14 +2818,18 @@ class _DiscUnit:
                 rpm = 0.0 if idx == 0 else (idx / 16.0)
                 hi = Image.new("RGBA", (shell_sz * ss, shell_sz * ss), (0, 0, 0, 0))
                 hd = ImageDraw.Draw(hi, "RGBA")
+                hi_hud = Image.new("RGBA", (shell_sz * ss, shell_sz * ss), (0, 0, 0, 0))
+                hd_h = ImageDraw.Draw(hi_hud, "RGBA")
                 c0, c1 = (shell_rad - r_core) * ss, (shell_rad + r_core) * ss
                 hd.ellipse((c0, c0, c1, c1), fill=(10, 14, 24, 248))
                 a0, a1 = (shell_rad - r_arc) * ss, (shell_rad + r_arc) * ss
                 hd.arc((a0, a0, a1, a1), start=135, end=405, fill=(32, 40, 58, 135), width=aw)
+                hd_h.arc((a0, a0, a1, a1), start=135, end=405, fill=(56, 68, 96, 105), width=aw)
                 if idx > 0:
                     end_a = 135.0 + 270.0 * rpm
                     acol = _lerp_rgb(self.glow_rgb, (255, 255, 255), 0.26 * rpm)
                     hd.arc((a0, a0, a1, a1), start=135, end=end_a, fill=(*acol, int(155 + 95 * rpm)), width=aw)
+                    hd_h.arc((a0, a0, a1, a1), start=135, end=end_a, fill=(*acol, min(255, int(175 + 80 * rpm))), width=aw)
                     rim_col = _lerp_rgb(self.glow_rgb, (255, 255, 255), 0.35 * rpm)
                     rim_alpha = int(170 + 80 * rpm)
                 else:
@@ -2360,7 +2837,9 @@ class _DiscUnit:
                     rim_alpha = 145
                 rim_w = max(2, int(round((1.3 + 1.1 * rpm) * UI_SCALE * ss)))
                 hd.ellipse((c0, c0, c1, c1), outline=(*rim_col, rim_alpha), width=rim_w)
-                bake_shell_sparse(hi)
+                hd_h.ellipse((c0 - ss, c0 - ss, c1 + ss, c1 + ss), outline=(4, 8, 16, 76), width=rim_w + 2 * ss)
+                hd_h.ellipse((c0, c0, c1, c1), outline=(*rim_col, min(255, rim_alpha + 25)), width=rim_w)
+                bake_shell_sparse(hi, hi_hud)
 
             is_bass = self.role == "bass"
             n_blades = 3 if is_bass else 5
@@ -2378,6 +2857,7 @@ class _DiscUnit:
             self._rotor_period = period
             all_tiers = (0.0,) + self._ROTOR_RPM_TIERS
             self._rotor_tiers: list[list[Image.Image]] = []
+            self._hud_rotor_sparse: list[list[tuple[np.ndarray, np.ndarray]]] = []
             r_strip_w = (rot_sz + pad_c) * self._ROTOR_ANGLES
 
             for rpm_val in all_tiers:
@@ -2440,19 +2920,30 @@ class _DiscUnit:
 
                     d_hi.ellipse(
                         (mx_s - rh_s, my_s - rh_s, mx_s + rh_s, my_s + rh_s),
-                        fill=(16, 22, 36, 252),
-                        outline=(*soft_hi, 220 if running else 125),
+                        fill=(16, 22, 36, 235),
+                        outline=(*soft_hi, 220 if running else 135),
                         width=hub_w,
                     )
                     r_dot = rh_s * 0.46
-                    d_hi.ellipse((mx_s - r_dot, my_s - r_dot, mx_s + r_dot, my_s + r_dot), fill=(*dot_col, 240 if running else 150))
+                    d_hi.ellipse((mx_s - r_dot, my_s - r_dot, mx_s + r_dot, my_s + r_dot), fill=(*dot_col, 240 if running else 155))
 
                 r_comp = Image.alpha_composite(Image.alpha_composite(l_bg, l_blade), l_hi)
-                r_1x = _rgba_to_bgra(r_comp.resize((r_strip_w, rot_sz), Image.Resampling.LANCZOS))
+                r_rgba_1x = r_comp.resize((r_strip_w, rot_sz), Image.Resampling.LANCZOS)
+                r_1x = _rgba_to_bgra(r_rgba_1x)
                 self._rotor_tiers.append([
                     r_1x.crop((ai * (rot_sz + pad_c), 0, ai * (rot_sz + pad_c) + rot_sz, rot_sz))
                     for ai in range(self._ROTOR_ANGLES)
                 ])
+                pre_strip, strip_a = _pil_rgba_to_premul_u32(r_rgba_1x)
+                tier_hud = []
+                for ai in range(self._ROTOR_ANGLES):
+                    ox = ai * (rot_sz + pad_c)
+                    sub_p = pre_strip[:, ox : ox + rot_sz]
+                    sub_a = strip_a[:, ox : ox + rot_sz]
+                    ry_m, rx_m = np.nonzero(sub_a > 3)
+                    rel_r = (ry_m * w + rx_m).astype(np.intp)
+                    tier_hud.append((rel_r, sub_p[ry_m, rx_m].copy()))
+                self._hud_rotor_sparse.append(tier_hud)
 
     def step_physics(self, dt: float, bar_targets: list[float], center_val: float, pump_tgt: float, active: bool, launch_prog: float | None):
         """连续时间微分（Apple ProMotion 阻尼弹簧包络），任意刷新率 (60Hz~144Hz) 运动速度 100% 物理恒定且如黄油顺滑。"""
@@ -2555,20 +3046,22 @@ class _DiscUnit:
 
         self._motion_energy = max(max_delta / max(dt, 0.004), self._rpm_norm, self._pump * 0.8)
 
-    def draw_into(self, frame_u32: np.ndarray, frame_flat: np.ndarray, frame_pil: Image.Image):
+    def draw_into(self, frame_u32: np.ndarray, frame_flat: np.ndarray, frame_pil: Image.Image | None, hud_mode: bool = False):
         w, h = self._sw, self._sh
         cx, cy = self.cx, self.cy
         cap_half = self._cap_half
         r_cap_base = self._r_start + 2.8 * UI_SCALE + self._cap_thick * 0.5
         max_len = self._max_len
         b_steps = self._BAR_STEPS
-        b_table = self._bar_u32_table
-        c_subs = self._cap_sub_sparse
+        b_table = self._hud_bar_u32_table if hud_mode else self._bar_u32_table
+        c_subs = self._hud_cap_sub_sparse
         dirs = self._dirs
         bars = self._bars
         peaks = self._peaks
 
-        # 1. 80 级亚像素音柱 + 0.5px 亚像素抛飞小帽直写
+        # 1. 亚像素音柱直写 + 0.5px 亚像素抛飞小帽单次预乘 Alpha 混合（消除柱尖与小帽交界暗边）
+        cap_idx_parts = []
+        cap_src_parts = []
         for i in range(self.bar_count):
             v = bars[i]
             if v > 0.003:
@@ -2586,22 +3079,48 @@ class _DiscUnit:
                 if cap_half <= px < w - cap_half - 1 and cap_half <= py < h - cap_half - 1:
                     sub_idx = (2 if (fy - py) >= 0.5 else 0) + (1 if (fx - px) >= 0.5 else 0)
                     rel_off, c_vals = c_subs[i][sub_idx]
-                    frame_flat[py * w + px + rel_off] = c_vals
+                    cap_idx_parts.append(py * w + px + rel_off)
+                    cap_src_parts.append(c_vals)
+
+        if cap_idx_parts:
+            all_c_idx = np.concatenate(cap_idx_parts)
+            all_c_src = np.concatenate(cap_src_parts)
+            dst_c = frame_flat[all_c_idx]
+            ca = all_c_src >> 24
+            cinv = 255 - ca
+            coa = np.minimum(255, ca + ((dst_c >> 24) * cinv + 127) // 255)
+            cor = np.minimum(coa, ((all_c_src >> 16) & 0xFF) + (((dst_c >> 16) & 0xFF) * cinv + 127) // 255)
+            cog = np.minimum(coa, ((all_c_src >> 8) & 0xFF) + (((dst_c >> 8) & 0xFF) * cinv + 127) // 255)
+            cob = np.minimum(coa, (all_c_src & 0xFF) + ((dst_c & 0xFF) * cinv + 127) // 255)
+            frame_flat[all_c_idx] = (coa << 24) | (cor << 16) | (cog << 8) | cob
 
         # 2. 冲击波与盘心腔体
         core_pump = self._pump if self.role == "audio" else self._rpm_norm
-        ac = frame_pil.alpha_composite
         if core_pump > 0.05:
             sk = min(8, max(1, int(core_pump * 8.5)))
-            sx, sy, sh_img = self._shock_stamps[sk]
-            ac(sh_img, (sx, sy))
+            if hud_mode:
+                s_idx, sr, sg, sb, sa, inv_a = self._hud_shock_sparse[sk]
+                dst = frame_flat[s_idx]
+                da = dst >> 24
+                dr = (dst >> 16) & 0xFF
+                dg = (dst >> 8) & 0xFF
+                db = dst & 0xFF
+                oa = np.minimum(255, sa + (da * inv_a + 127) // 255)
+                or_ = np.minimum(oa, sr + (dr * inv_a + 127) // 255)
+                og = np.minimum(oa, sg + (dg * inv_a + 127) // 255)
+                ob = np.minimum(oa, sb + (db * inv_a + 127) // 255)
+                frame_flat[s_idx] = (oa << 24) | (or_ << 16) | (og << 8) | ob
+            elif frame_pil is not None:
+                sx, sy, sh_img = self._shock_stamps[sk]
+                frame_pil.alpha_composite(sh_img, (sx, sy))
 
+        shells = self._hud_core_shells_u32 if hud_mode else self._core_shells_u32
         if self.role == "audio":
             shell_idx = min(12, int(self._pump * 12.4))
-            sh_i, sh_v = self._core_shells_u32[shell_idx]
+            sh_i, sh_v = shells[shell_idx]
             frame_flat[sh_i] = sh_v
 
-            # 实时连续向量化 SDF 声波线（紧致行裁剪：仅对声波实际扫过的窄带切片求值，提速 4 倍！）
+            # 实时连续向量化 SDF 声波线（支持主界面实心底与悬浮窗纯透明底双模式）
             audio_norm = clamp(self._disp_center_val / self.max_val)
             audio_vis = max(audio_norm ** 0.62 if audio_norm > 0.002 else 0.0, self._pump * 0.55)
             lvl = max(audio_vis, self._pump * 0.82)
@@ -2647,30 +3166,54 @@ class _DiscUnit:
                         va2 = a2[hy, hx][:, None]
                         vag = ag[hy, hx][:, None]
                         vam = am[hy, hx][:, None]
-                        rgb = self._wave_c_bg[None, :] * (1.0 - va2) + self._wave_c_sub[None, :] * va2
-                        rgb = rgb * (1.0 - vag) + self._wave_c_glow[None, :] * vag
-                        rgb = rgb * (1.0 - vam) + self._wave_c_main[None, :] * vam
                         sub_slice = frame_u32[wy0 + r0 : wy0 + r1, wx0:wx1]
-                        sub_slice[hy, hx] = (
+                        if hud_mode:
+                            rgb_p = self._wave_c_sub[None, :] * va2
+                            a_w = va2[:, 0]
+                            rgb_p = rgb_p * (1.0 - vag) + self._wave_c_glow[None, :] * vag
+                            a_w = vag[:, 0] + a_w * (1.0 - vag[:, 0])
+                            rgb_p = rgb_p * (1.0 - vam) + self._wave_c_main[None, :] * vam
+                            a_w = vam[:, 0] + a_w * (1.0 - vam[:, 0])
+                            au = np.clip(np.rint(a_w * 255.0), 1.0, 255.0).astype(np.uint32)
+                            ru = np.minimum(au, np.clip(np.rint(rgb_p[:, 0]), 0.0, 255.0).astype(np.uint32))
+                            gu = np.minimum(au, np.clip(np.rint(rgb_p[:, 1]), 0.0, 255.0).astype(np.uint32))
+                            bu = np.minimum(au, np.clip(np.rint(rgb_p[:, 2]), 0.0, 255.0).astype(np.uint32))
+                            sub_slice[hy, hx] = (au << 24) | (ru << 16) | (gu << 8) | bu
+                        else:
+                            rgb = self._wave_c_bg[None, :] * (1.0 - va2) + self._wave_c_sub[None, :] * va2
+                            rgb = rgb * (1.0 - vag) + self._wave_c_glow[None, :] * vag
+                            rgb = rgb * (1.0 - vam) + self._wave_c_main[None, :] * vam
+                            sub_slice[hy, hx] = (
+                                0xFF000000
+                                | (np.rint(rgb[:, 0]).astype(np.uint32) << 16)
+                                | (np.rint(rgb[:, 1]).astype(np.uint32) << 8)
+                                | np.rint(rgb[:, 2]).astype(np.uint32)
+                            )
+            else:
+                d0 = np.abs(ys[:, 0])
+                a0 = np.clip(np.float32(0.75 * UI_SCALE + 0.5) - d0, 0.0, 1.0) * np.float32(150.0 / 255.0 if hud_mode else 130.0 / 255.0)
+                hy = np.flatnonzero(a0 > 0.01)
+                if hy.size:
+                    va0 = a0[hy][:, None]
+                    if hud_mode:
+                        idle_col = np.array(_lerp_rgb(self.glow_rgb, (220, 232, 248), 0.35), dtype=np.float32)
+                        au = np.clip(np.rint(va0[:, 0] * 255.0), 1.0, 255.0).astype(np.uint32)
+                        rgb_p = idle_col[None, :] * va0
+                        row_u32 = (
+                            (au << 24)
+                            | (np.minimum(au, np.rint(rgb_p[:, 0]).astype(np.uint32)) << 16)
+                            | (np.minimum(au, np.rint(rgb_p[:, 1]).astype(np.uint32)) << 8)
+                            | np.minimum(au, np.rint(rgb_p[:, 2]).astype(np.uint32))
+                        )
+                    else:
+                        idle_col = np.array((82.0, 95.0, 122.0), dtype=np.float32)
+                        rgb = self._wave_c_bg[None, :] * (1.0 - va0) + idle_col[None, :] * va0
+                        row_u32 = (
                             0xFF000000
                             | (np.rint(rgb[:, 0]).astype(np.uint32) << 16)
                             | (np.rint(rgb[:, 1]).astype(np.uint32) << 8)
                             | np.rint(rgb[:, 2]).astype(np.uint32)
                         )
-            else:
-                d0 = np.abs(ys[:, 0])
-                a0 = np.clip(np.float32(0.75 * UI_SCALE + 0.5) - d0, 0.0, 1.0) * np.float32(130.0 / 255.0)
-                hy = np.flatnonzero(a0 > 0.01)
-                if hy.size:
-                    va0 = a0[hy][:, None]
-                    idle_col = np.array((82.0, 95.0, 122.0), dtype=np.float32)
-                    rgb = self._wave_c_bg[None, :] * (1.0 - va0) + idle_col[None, :] * va0
-                    row_u32 = (
-                        0xFF000000
-                        | (np.rint(rgb[:, 0]).astype(np.uint32) << 16)
-                        | (np.rint(rgb[:, 1]).astype(np.uint32) << 8)
-                        | np.rint(rgb[:, 2]).astype(np.uint32)
-                    )
                     frame_u32[wy0 + hy, wx0:wx1] = row_u32[:, None]
         else:
             rpm = self._rpm_norm
@@ -2683,12 +3226,16 @@ class _DiscUnit:
                 tier_idx = min(len(self._ROTOR_RPM_TIERS), max(1, int(rpm * len(self._ROTOR_RPM_TIERS)) + 1))
                 sx_px = int(round(self._shake_x * self._r_core))
                 sy_px = int(round(self._shake_y * self._r_core))
-            sh_i, sh_v = self._core_shells_u32[shell_idx]
+            sh_i, sh_v = shells[shell_idx]
             frame_flat[sh_i] = sh_v
             ang_mod = self._rotor_angle % self._rotor_period
             ang_idx = int((ang_mod / self._rotor_period) * self._ROTOR_ANGLES + 0.5) % self._ROTOR_ANGLES
             rx, ry = self._rotor_base_pos
-            ac(self._rotor_tiers[tier_idx][ang_idx], (rx + sx_px, ry + sy_px))
+            if hud_mode:
+                rel_r, r_vals = self._hud_rotor_sparse[tier_idx][ang_idx]
+                frame_flat[(ry + sy_px) * w + (rx + sx_px) + rel_r] = r_vals
+            elif frame_pil is not None:
+                frame_pil.alpha_composite(self._rotor_tiers[tier_idx][ang_idx], (rx + sx_px, ry + sy_px))
 
 
 class ProMotionCluster(tk.Frame):
@@ -2700,11 +3247,29 @@ class ProMotionCluster(tk.Frame):
     - 三盘合一单次零拷贝 Win32 GDI 提交，130Hz 满刷下 CPU 依然稳压在 ~1.3%（远低于 3%）！
     """
 
-    def __init__(self, parent, shared: SharedVibrationParams, stop_event: threading.Event, wake_event: threading.Event, bg_hex: str = BG_CARD):
+    def __init__(
+        self,
+        parent,
+        shared: SharedVibrationParams,
+        stop_event: threading.Event,
+        wake_event: threading.Event,
+        bg_hex: str = BG_CARD,
+        on_double_click_center=None,
+    ):
         self._bg_hex = bg_hex
         self._bg_rgb = _hex_to_rgb(bg_hex)
         self._sw = S(646)
         self._sh = S(226)
+        self._on_double_click_center = on_double_click_center
+        self._hud_win: FloatingPulseHUD | None = None
+        self._hud_events: queue.SimpleQueue = queue.SimpleQueue()
+        self._hud_cmd_lock = threading.Lock()
+        self._want_hud: bool = False
+        self._hud_show_seq: int = 0
+        self._hud_applied_seq: int = 0
+        self._hud_target_pos: tuple[int, int] = (220, 180)
+        self._hud_ready_evt = threading.Event()
+        self._cursor_hand = False
 
         super().__init__(parent, width=self._sw, height=self._sh, bg=bg_hex, bd=0, highlightthickness=0)
         self.pack_propagate(False)
@@ -2756,12 +3321,35 @@ class ProMotionCluster(tk.Frame):
         self._has_frame = True
         np.copyto(self._frame_u32, self._base_idle_u32)
         for d in self.discs:
-            d.draw_into(self._frame_u32, self._frame_flat, self._frame_pil)
+            d.draw_into(self._frame_u32, self._frame_flat, self._frame_pil, hud_mode=False)
 
         self._stage.bind("<Map>", self._on_map_or_expose)
         self._stage.bind("<Expose>", self._on_map_or_expose)
         self._stage.bind("<Configure>", self._on_map_or_expose)
         self._stage.bind("<Unmap>", self._on_unmap)
+        self._stage.bind("<Motion>", self._on_stage_motion)
+        self._stage.bind("<Leave>", self._on_stage_leave)
+        self._stage.bind("<Double-Button-1>", self._on_stage_dblclick)
+
+    def _is_in_center_sphere(self, x: float, y: float) -> bool:
+        dx = x - self.disc_audio.cx
+        dy = y - self.disc_audio.cy
+        return (dx * dx + dy * dy) <= ((self.disc_audio._R * 1.04) ** 2)
+
+    def _on_stage_motion(self, event):
+        in_c = self._is_in_center_sphere(event.x, event.y)
+        if in_c != self._cursor_hand:
+            self._cursor_hand = in_c
+            self._stage.configure(cursor="hand2" if in_c else "")
+
+    def _on_stage_leave(self, _event=None):
+        if self._cursor_hand:
+            self._cursor_hand = False
+            self._stage.configure(cursor="")
+
+    def _on_stage_dblclick(self, event):
+        if self._on_double_click_center and self._is_in_center_sphere(event.x, event.y):
+            self._on_double_click_center()
 
     def _bake_unified_stage(self):
         w, h = self._sw, self._sh
@@ -2820,12 +3408,87 @@ class ProMotionCluster(tk.Frame):
         active_rgba = make_stage_rgba(True)
         base_rgb_f32 = np.frombuffer(active_rgba.convert("RGB").tobytes(), dtype=np.uint8).reshape((-1, 3)).astype(np.float32)
         idle_flat = _pil_bgra_to_u32(active_rgba).ravel()
+        hud_idle_flat = np.zeros(w * h, dtype=np.uint32)
 
         for d in self.discs:
-            d.bake_into(base_rgb_f32, idle_flat)
+            d.bake_into(base_rgb_f32, idle_flat, hud_idle_flat)
 
         self._base_idle_u32 = idle_flat.reshape((h, w)).copy()
+        self._hud_base_idle_u32 = hud_idle_flat.reshape((h, w)).copy()
         self._base_dim_u32 = _pil_bgra_to_u32(make_stage_rgba(False))
+
+    def render_hud_now(self, hud_win: FloatingPulseHUD):
+        """立即向悬浮透明 DIB 写入当前帧，实现切换瞬间零黑屏零闪烁无缝衔接。"""
+        with self._buf_lock:
+            np.copyto(hud_win.dib_u32, self._hud_base_idle_u32)
+            for d in self.discs:
+                d.draw_into(hud_win.dib_u32, hud_win.dib_flat, None, hud_mode=True)
+
+    def request_hud_show(self, x: int, y: int):
+        """主线程请求进入透明悬浮态（由 ProMotion 渲染线程单线程创建并呈现分层窗口）。"""
+        while True:
+            try:
+                self._hud_events.get_nowait()
+            except queue.Empty:
+                break
+        with self._hud_cmd_lock:
+            self._want_hud = True
+            self._hud_target_pos = (int(x), int(y))
+            self._hud_show_seq += 1
+            self._hud_ready_evt.clear()
+        self.viewable = True
+        self.wake_event.set()
+        self._hud_ready_evt.wait(0.08)
+
+    def request_hud_hide(self):
+        """主线程请求退出透明悬浮态并切回主舞台画布。"""
+        with self._hud_cmd_lock:
+            self._want_hud = False
+        with self._buf_lock:
+            try:
+                self.hwnd = int(self._stage.winfo_id()) if self._stage.winfo_ismapped() else 0
+            except tk.TclError:
+                self.hwnd = 0
+            np.copyto(self._frame_u32, self._base_idle_u32)
+            for d in self.discs:
+                d.draw_into(self._frame_u32, self._frame_flat, self._frame_pil, hud_mode=False)
+        self.wake_event.set()
+
+    def poll_hud_events(self) -> list[tuple]:
+        out = []
+        while True:
+            try:
+                out.append(self._hud_events.get_nowait())
+            except queue.Empty:
+                break
+        return out
+
+    def _sync_hud_thread_state(self) -> FloatingPulseHUD | None:
+        """仅在 ProMotion 渲染线程内调用：单线程管理悬浮窗创建、显示、隐藏与消息泵。"""
+        with self._hud_cmd_lock:
+            want = self._want_hud
+            seq = self._hud_show_seq
+            tx, ty = self._hud_target_pos
+
+        hud = self._hud_win
+        if want:
+            if hud is None or not hud.hwnd or not _user32_gdi.IsWindow(hud.hwnd):
+                hit_discs = tuple((d.cx, d.cy, d._R) for d in self.discs)
+                hud = FloatingPulseHUD(self._sw, self._sh, self._hud_events, hit_discs=hit_discs)
+                self._hud_win = hud
+                self._hud_applied_seq = 0
+            if self._hud_applied_seq != seq:
+                self._hud_applied_seq = seq
+                self.render_hud_now(hud)
+                hud.show_at(tx, ty)
+                self.hwnd = hud.hwnd
+                self._hud_ready_evt.set()
+            hud.pump_messages()
+            return hud if hud.visible else None
+        else:
+            if hud is not None and hud.visible:
+                hud.hide()
+            return None
 
     def set_titles_bright(self, bright: bool):
         if bright != self._last_lbl_bright:
@@ -2835,9 +3498,12 @@ class ProMotionCluster(tk.Frame):
                 lbl.config(fg=fg)
 
     def _on_unmap(self, _event=None):
-        self.viewable = False
+        if not self._want_hud:
+            self.viewable = False
 
     def _on_map_or_expose(self, _event=None):
+        if self._want_hud:
+            return
         try:
             if self._stage.winfo_ismapped():
                 self.hwnd = int(self._stage.winfo_id())
@@ -2848,10 +3514,13 @@ class ProMotionCluster(tk.Frame):
             pass
 
     def blit_current(self):
-        hwnd = self.hwnd
-        if not hwnd or not self._has_frame or not _user32_gdi.IsWindow(hwnd):
+        """主窗口舞台 GDI 直写（仅用于主界面静态重绘，绝不跨线程触碰悬浮窗 HWND）。"""
+        if self._want_hud:
             return
         with self._buf_lock:
+            hwnd = self.hwnd
+            if not hwnd or not self._has_frame or not _user32_gdi.IsWindow(hwnd):
+                return
             hdc = _user32_gdi.GetDC(hwnd)
             if hdc:
                 try:
@@ -2923,131 +3592,160 @@ class ProMotionCluster(tk.Frame):
         fps_frames = 0
         fps_t0 = last_t
 
-        while not self.stop_event.is_set():
-            if not self.viewable or not self.hwnd:
-                self.wake_event.wait(0.10)
-                self.wake_event.clear()
-                last_t = time.perf_counter()
-                continue
+        try:
+            while not self.stop_event.is_set():
+                hud_active = self._sync_hud_thread_state()
 
-            now_mono = time.monotonic()
-            with self.shared.lock:
-                enabled = self.shared.enabled
-                vis_on = self.shared.visualizer_enabled
-                st = self.shared.stats
-                total_rms = st.total_rms
-                beat = clamp(st.beat_pulse)
-                l_out = st.left_output
-                r_out = st.right_output
-                spec = st.spectrum
-                spec_l = st.spectrum_l
-                spec_r = st.spectrum_r
-                man_ovr = st.manual_override
+                if (not self.viewable or not self.hwnd) and hud_active is None:
+                    self.wake_event.wait(0.10)
+                    self.wake_event.clear()
+                    last_t = time.perf_counter()
+                    continue
 
-            # 当用户关闭「丝滑律动」开关或关闭总震动时：仅绘制 1 次静默暗光态，随后进入 0% CPU 休眠！
-            show_active = enabled and vis_on
-            if not show_active:
-                if was_dimmed is not True:
-                    for d in self.discs:
-                        d._bars = [0.0] * d.bar_count
-                        d._peaks = [0.0] * d.bar_count
-                        d._peak_vels = [0.0] * d.bar_count
-                        d._pump = 0.0
-                        d._rpm_norm = 0.0
-                        d._disp_center_val = 0.0
-                    with self._buf_lock:
-                        np.copyto(self._frame_u32, self._base_dim_u32)
-                    self.blit_current()
-                    was_dimmed = True
-                self.measured_fps = 0.0
-                self.wake_event.wait(0.08)
-                self.wake_event.clear()
-                last_t = time.perf_counter()
-                continue
+                now_mono = time.monotonic()
+                with self.shared.lock:
+                    enabled = self.shared.enabled
+                    vis_on = self.shared.visualizer_enabled
+                    in_hud = self.shared.hud_mode
+                    st = self.shared.stats
+                    total_rms = st.total_rms
+                    beat = clamp(st.beat_pulse)
+                    l_out = st.left_output
+                    r_out = st.right_output
+                    spec = st.spectrum
+                    spec_l = st.spectrum_l
+                    spec_r = st.spectrum_r
+                    man_ovr = st.manual_override
 
-            # 检测是否完全静止（静音暂停且余韵已落定）：ProMotion 自动降至 0Hz 零重绘，有声瞬间毫秒级满刷唤醒！
-            elapsed_launch = now_mono - self.launch_start
-            launch_prog = (elapsed_launch / self.launch_duration) if (0.0 <= elapsed_launch < self.launch_duration) else None
-            audio_active = clamp((total_rms - 25.0) / 110.0)
-            has_signal = (launch_prog is not None) or (audio_active > 0.005) or (l_out > 0.002) or (r_out > 0.002)
+                # 悬浮透明模式下始终保持三环声波脉动激活；主界面下若关闭开关则绘制 1 次静默态后 0% CPU 休眠
+                show_active = (enabled and vis_on) or (hud_active is not None) or in_hud
+                if not show_active:
+                    if was_dimmed is not True:
+                        for d in self.discs:
+                            d._bars = [0.0] * d.bar_count
+                            d._peaks = [0.0] * d.bar_count
+                            d._peak_vels = [0.0] * d.bar_count
+                            d._pump = 0.0
+                            d._rpm_norm = 0.0
+                            d._disp_center_val = 0.0
+                        if hud_active is None:
+                            with self._buf_lock:
+                                np.copyto(self._frame_u32, self._base_dim_u32)
+                            self.blit_current()
+                        was_dimmed = True
+                    self.measured_fps = 0.0
+                    self.wake_event.wait(0.08)
+                    self.wake_event.clear()
+                    last_t = time.perf_counter()
+                    continue
 
-            if (not has_signal) and (was_dimmed is False) and all(d.is_settled for d in self.discs):
-                self.measured_fps = 0.0
-                self.wake_event.wait(0.05)
-                self.wake_event.clear()
-                last_t = time.perf_counter()
-                continue
+                # 检测是否完全静止（静音暂停且余韵已落定）：ProMotion 自动降至 0Hz 零重绘；悬浮模式下用 MsgWaitForMultipleObjects 亚毫秒级响应鼠标点击/拖拽！
+                elapsed_launch = now_mono - self.launch_start
+                launch_prog = (elapsed_launch / self.launch_duration) if (0.0 <= elapsed_launch < self.launch_duration) else None
+                audio_active = clamp((total_rms - 25.0) / 110.0)
+                has_signal = (launch_prog is not None) or (audio_active > 0.005) or (l_out > 0.002) or (r_out > 0.002)
 
-            was_dimmed = False
-
-            # 每 2 秒自动探测窗口当前所在显示器的物理刷新率（多屏不同赫兹无缝自适应）
-            if now_mono - last_hz_check >= 2.0:
-                last_hz_check = now_mono
-                mon_hz = get_window_refresh_hz(self.hwnd)
-                self.monitor_hz = mon_hz
-                # <=144Hz 屏幕直接 1:1 满刷同步（如 60/120/130/144Hz）；超高刷电竞屏(240/360Hz)自动整除至 ~120Hz 控温省电
-                fast_stride = 1 if mon_hz <= 144 else max(2, int(round(mon_hz / 120.0)))
-
-            # ProMotion 动态分频：爆发弹跳与高速旋转跑满原生帧率，轻柔余韵切至 1/2 整数分频（零顿挫且再省一半算力）
-            peak_motion = max(d._motion_energy for d in self.discs)
-            need_full_hz = (launch_prog is not None) or (beat > 0.12) or (peak_motion > 0.14) or (l_out > 0.08) or (r_out > 0.08)
-            stride = fast_stride if need_full_hz else (fast_stride * 2 if mon_hz >= 90 else fast_stride)
-
-            # 硬件 VBlank 垂直同步等待（0% CPU 内核阻塞，帧间隔精确对齐显示器每次扫描刷新）
-            if dwm_ok:
-                for _ in range(stride):
-                    t_f0 = time.perf_counter()
-                    hr = _dwmapi.DwmFlush()
-                    if hr != 0 or (time.perf_counter() - t_f0) < 0.0008:
-                        short_flushes += 1
-                        if short_flushes > 6:
-                            dwm_ok = False
-                            break
+                if (not has_signal) and (was_dimmed is False) and all(d.is_settled for d in self.discs):
+                    self.measured_fps = 0.0
+                    if hud_active is not None:
+                        if not hud_active.is_interacting and not self.wake_event.is_set():
+                            _user32_gdi.MsgWaitForMultipleObjects(0, None, False, 25, 0x04FF)  # QS_ALLINPUT
+                        hud_active.pump_messages()
                     else:
-                        short_flushes = 0
-            if not dwm_ok:
-                time.sleep(stride / max(30, mon_hz))
+                        self.wake_event.wait(0.05)
+                    self.wake_event.clear()
+                    last_t = time.perf_counter()
+                    continue
 
-            t_now = time.perf_counter()
-            dt = clamp(t_now - last_t, 0.003, 0.050)
-            last_t = t_now
+                was_dimmed = False
 
-            if len(spec) < 24:
-                spec = (0.0,) * 24
-            if len(spec_l) < 24:
-                spec_l = spec
-            if len(spec_r) < 24:
-                spec_r = spec
+                # 每 2 秒自动探测窗口当前所在显示器的物理刷新率（多屏不同赫兹无缝自适应）
+                active_hwnd = hud_active.hwnd if hud_active is not None else self.hwnd
+                if now_mono - last_hz_check >= 2.0:
+                    last_hz_check = now_mono
+                    mon_hz = get_window_refresh_hz(active_hwnd)
+                    self.monitor_hz = mon_hz
+                    fast_stride = 1 if mon_hz <= 144 else max(2, int(round(mon_hz / 120.0)))
 
-            # 三枚圆盘全部采用真立体声尖锐方向频谱（右半圈=右耳方位，左半圈=左耳方位，绝不平均撑成圆球！）
-            left_bars, left_pump = self._build_directional_ring(
-                32, spec_r[:10], spec_l[:10], l_out, beat * 1.15, audio_active, man_ovr
-            )
-            audio_bars = (
-                [clamp(v * audio_active * (0.95 + 0.38 * beat)) for v in spec_r]
-                + [clamp(v * audio_active * (0.95 + 0.38 * beat)) for v in reversed(spec_l)]
-            )
-            audio_pump = clamp(max(beat * 0.95, (total_rms / MAX_RMS_DISPLAY) ** 0.7))
-            right_bars, right_pump = self._build_directional_ring(
-                32, spec_r[8:], spec_l[8:], r_out, beat * 0.75, audio_active, man_ovr
-            )
+                # ProMotion 动态分频：鼠标拖拽、爆发弹跳或高速旋转时强制跑满原生帧率
+                peak_motion = max(d._motion_energy for d in self.discs)
+                interacting = hud_active is not None and hud_active.is_interacting
+                need_full_hz = interacting or (launch_prog is not None) or (beat > 0.12) or (peak_motion > 0.14) or (l_out > 0.08) or (r_out > 0.08)
+                stride = 1 if interacting else (fast_stride if need_full_hz else (fast_stride * 2 if mon_hz >= 90 else fast_stride))
 
-            self.disc_left.step_physics(dt, left_bars, l_out, left_pump, True, launch_prog)
-            self.disc_audio.step_physics(dt, audio_bars, total_rms, audio_pump, True, launch_prog)
-            self.disc_right.step_physics(dt, right_bars, r_out, right_pump, True, launch_prog)
+                # 硬件 VBlank 垂直同步等待（每次刷新间隙实时泵送悬浮窗鼠标消息）
+                if dwm_ok:
+                    for _ in range(stride):
+                        t_f0 = time.perf_counter()
+                        hr = _dwmapi.DwmFlush()
+                        if hud_active is not None:
+                            hud_active.pump_messages()
+                        if hr != 0 or (time.perf_counter() - t_f0) < 0.0008:
+                            short_flushes += 1
+                            if short_flushes > 6:
+                                dwm_ok = False
+                                break
+                        else:
+                            short_flushes = 0
+                if not dwm_ok:
+                    time.sleep(stride / max(30, mon_hz))
+                    if hud_active is not None:
+                        hud_active.pump_messages()
 
-            with self._buf_lock:
-                np.copyto(self._frame_u32, self._base_idle_u32)
-                for d in self.discs:
-                    d.draw_into(self._frame_u32, self._frame_flat, self._frame_pil)
+                hud_active = self._sync_hud_thread_state()
 
-            self.blit_current()
+                t_now = time.perf_counter()
+                dt = clamp(t_now - last_t, 0.003, 0.050)
+                last_t = t_now
 
-            fps_frames += 1
-            if t_now - fps_t0 >= 0.5:
-                self.measured_fps = fps_frames / (t_now - fps_t0)
-                fps_frames = 0
-                fps_t0 = t_now
+                if len(spec) < 24:
+                    spec = (0.0,) * 24
+                if len(spec_l) < 24:
+                    spec_l = spec
+                if len(spec_r) < 24:
+                    spec_r = spec
+
+                # 三枚圆盘全部采用真立体声尖锐方向频谱（右半圈=右耳方位，左半圈=左耳方位，绝不平均撑成圆球！）
+                left_bars, left_pump = self._build_directional_ring(
+                    32, spec_r[:10], spec_l[:10], l_out, beat * 1.15, audio_active, man_ovr
+                )
+                audio_bars = (
+                    [clamp(v * audio_active * (0.95 + 0.38 * beat)) for v in spec_r]
+                    + [clamp(v * audio_active * (0.95 + 0.38 * beat)) for v in reversed(spec_l)]
+                )
+                audio_pump = clamp(max(beat * 0.95, (total_rms / MAX_RMS_DISPLAY) ** 0.7))
+                right_bars, right_pump = self._build_directional_ring(
+                    32, spec_r[8:], spec_l[8:], r_out, beat * 0.75, audio_active, man_ovr
+                )
+
+                self.disc_left.step_physics(dt, left_bars, l_out, left_pump, True, launch_prog)
+                self.disc_audio.step_physics(dt, audio_bars, total_rms, audio_pump, True, launch_prog)
+                self.disc_right.step_physics(dt, right_bars, r_out, right_pump, True, launch_prog)
+
+                if hud_active is not None:
+                    np.copyto(hud_active.dib_u32, self._hud_base_idle_u32)
+                    for d in self.discs:
+                        d.draw_into(hud_active.dib_u32, hud_active.dib_flat, None, hud_mode=True)
+                    hud_active.present()
+                else:
+                    with self._buf_lock:
+                        np.copyto(self._frame_u32, self._base_idle_u32)
+                        for d in self.discs:
+                            d.draw_into(self._frame_u32, self._frame_flat, self._frame_pil, hud_mode=False)
+                    self.blit_current()
+
+                fps_frames += 1
+                if t_now - fps_t0 >= 0.5:
+                    self.measured_fps = fps_frames / (t_now - fps_t0)
+                    fps_frames = 0
+                    fps_t0 = t_now
+        finally:
+            if self._hud_win is not None:
+                try:
+                    self._hud_win.destroy()
+                except Exception:
+                    pass
+                self._hud_win = None
 
 
 class AppleSwitch(tk.Label):
@@ -3806,6 +4504,9 @@ class VibrationApp:
         self.vis_thread = None
         self.test_thread = None
         self.adv_dialog: AdvancedDialog | None = None
+        self.hud_win: FloatingPulseHUD | None = None
+        self.hud_mode: bool = False
+        self.hud_pos: tuple[int, int] | None = None
         self.closing = False
         self._save_timer = None
         self._seen_hotkey_seq = 0
@@ -3886,6 +4587,13 @@ class VibrationApp:
                                 self.mode_profiles[m][k] = m_clean[k]
                         self.mode_profiles[m]["auto_profile"] = m == "智能自动"
 
+            # 4. 恢复悬浮透明律动窗记忆坐标（可选）
+            if isinstance(raw, dict) and "hud_x" in raw and "hud_y" in raw:
+                try:
+                    self.hud_pos = (int(raw["hud_x"]), int(raw["hud_y"]))
+                except (TypeError, ValueError):
+                    self.hud_pos = None
+
             active_cfg = dict(self.mode_profiles[sel_mode])
             active_cfg["auto_profile"] = sel_mode == "智能自动"
             active_cfg["selected_mode"] = sel_mode
@@ -3903,6 +4611,9 @@ class VibrationApp:
             m: {k: self.mode_profiles[m][k] for k in PROFILE_PARAM_KEYS}
             for m in MODE_NAMES
         }
+        if self.hud_pos is not None:
+            payload["hud_x"] = int(self.hud_pos[0])
+            payload["hud_y"] = int(self.hud_pos[1])
         try:
             CONFIG_FILE.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
         except Exception as exc:
@@ -3967,6 +4678,7 @@ class VibrationApp:
             stop_event=self.stop_event,
             wake_event=self.vis_wake_event,
             bg_hex=BG_CARD,
+            on_double_click_center=self.enter_hud_mode,
         )
         self.disc_cluster.pack()
         self.disc_left = self.disc_cluster.disc_left
@@ -4253,6 +4965,60 @@ class VibrationApp:
         self.test_thread = threading.Thread(target=worker, daemon=True)
         self.test_thread.start()
 
+    def _on_hud_moved(self, x: int, y: int):
+        self.hud_pos = (int(x), int(y))
+        self.schedule_save()
+
+    def enter_hud_mode(self):
+        """双击中央声波球：隐藏所有背景与 UI，切换为置顶真透明三环悬浮桌面律动模式。"""
+        if self.closing or self.hud_mode:
+            return
+        try:
+            stage_x = int(self.disc_cluster._stage.winfo_rootx())
+            stage_y = int(self.disc_cluster._stage.winfo_rooty())
+        except Exception:
+            stage_x, stage_y = 220, 180
+
+        target_x, target_y = self.hud_pos if self.hud_pos is not None else (stage_x, stage_y)
+
+        if self.adv_dialog and self.adv_dialog.winfo_exists():
+            try:
+                self.adv_dialog.destroy()
+            except Exception:
+                pass
+            self.adv_dialog = None
+
+        self.hud_mode = True
+        with self.shared.lock:
+            self.shared.hud_mode = True
+
+        self.disc_cluster.request_hud_show(target_x, target_y)
+        self.master.withdraw()
+        self.log_queue.put("已进入透明悬浮律动模式（可自由拖动圆环，再次双击恢复主界面）。")
+
+    def exit_hud_mode(self):
+        """再次双击悬浮圆环：平滑退出透明悬浮态并恢复完整主界面。"""
+        if self.closing or not self.hud_mode:
+            return
+        self.hud_mode = False
+        with self.shared.lock:
+            self.shared.hud_mode = False
+
+        self.disc_cluster.request_hud_hide()
+        self.master.deiconify()
+        apply_dark_titlebar(self.master)
+        self.master.lift()
+        try:
+            self.master.focus_force()
+        except Exception:
+            pass
+        self.master.update_idletasks()
+
+        self.sync_ui_from_shared()
+        self.disc_cluster.blit_current()
+        self.vis_wake_event.set()
+        self.log_queue.put("已退出悬浮模式并恢复主界面。")
+
     def open_advanced_dialog(self):
         if self.adv_dialog and self.adv_dialog.winfo_exists():
             self.adv_dialog.lift()
@@ -4307,9 +5073,50 @@ class VibrationApp:
                 if self.adv_dialog and self.adv_dialog.winfo_exists():
                     self.adv_dialog.sync_from_snapshot(self.shared.snapshot())
 
+    def _process_hud_events(self):
+        for ev in self.disc_cluster.poll_hud_events():
+            kind = ev[0]
+            if kind == "restore":
+                self.exit_hud_mode()
+            elif kind == "moved":
+                self._on_hud_moved(ev[1], ev[2])
+            elif kind == "space":
+                self.toggle_enabled()
+            elif kind == "close":
+                self.on_closing()
+                return True
+        return False
+
     def update_gui(self):
         if self.closing:
             return
+        if getattr(self, "_hot_reload_mtime", None) is not None:
+            now_hr = time.monotonic()
+            if now_hr - getattr(self, "_last_hr_check", 0.0) >= 1.0:
+                self._last_hr_check = now_hr
+                try:
+                    src_p = Path(__file__).resolve()
+                    cur_m = src_p.stat().st_mtime_ns
+                    if cur_m != self._hot_reload_mtime:
+                        # 确认脚本写入完整且语法合法后自动热重载刷新界面
+                        compile(src_p.read_bytes(), str(src_p), "exec")
+                        self._hot_reload_mtime = cur_m
+                        self._restart_self_script(src_p)
+                        return
+                except Exception:
+                    pass
+        if self._process_hud_events():
+            return
+        if self.hud_mode:
+            self.disc_cluster.viewable = True
+            snap_h = self.shared.snapshot(include_stats=False)
+            if snap_h["hotkey_seq"] != self._seen_hotkey_seq:
+                self._seen_hotkey_seq = snap_h["hotkey_seq"]
+                self.schedule_save()
+            self._drain_logs()
+            self.master.after(30, self.update_gui)
+            return
+
         try:
             is_minimized = (self.master.state() == "iconic") or (not self.master.winfo_viewable())
         except tk.TclError:
@@ -4400,6 +5207,29 @@ class VibrationApp:
 
     # ----- 安全退出 -----
 
+    def _restart_self_script(self, src_path: Path):
+        if self.closing:
+            return
+        self.closing = True
+        try:
+            self.save_settings()
+        except Exception:
+            pass
+        self.stop_event.set()
+        self.vis_wake_event.set()
+        for t in (self.vis_thread, self.controller_thread, self.audio_thread):
+            if t and t.is_alive():
+                t.join(timeout=0.5)
+        try:
+            self.master.destroy()
+        except Exception:
+            pass
+        import subprocess
+        py_exe = Path(sys.executable)
+        pyw = py_exe.with_name("pythonw.exe")
+        runner = str(pyw if pyw.exists() else py_exe)
+        subprocess.Popen([runner, str(src_path)], cwd=str(src_path.parent))
+
     def on_closing(self):
         if self.closing:
             return
@@ -4481,6 +5311,12 @@ def main():
         pass
 
     app = VibrationApp(root)
+    if not getattr(sys, "frozen", False):
+        try:
+            app._hot_reload_mtime = Path(__file__).resolve().stat().st_mtime_ns
+            app._last_hr_check = time.monotonic()
+        except Exception:
+            app._hot_reload_mtime = None
     app.sync_layout()
 
     width = S(716)
@@ -4496,6 +5332,9 @@ def main():
     root.protocol("WM_DELETE_WINDOW", app.on_closing)
     root.deiconify()
     apply_dark_titlebar(root)
+    root.attributes("-topmost", True)
+    root.lift()
+    root.after(280, lambda: root.attributes("-topmost", False))
     root.mainloop()
 
 
